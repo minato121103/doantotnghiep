@@ -25,6 +25,10 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                             </svg>
                         </button>
+                        <!-- Gợi ý tìm kiếm header -->
+                        <div id="header-search-suggestions" class="absolute left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-xl hidden z-40 max-h-72 overflow-y-auto text-sm">
+                            <!-- Suggestions will be rendered here -->
+                        </div>
                     </div>
                 </div>
                 
@@ -257,6 +261,9 @@
 </header>
 
 <script>
+    const HEADER_BASE_URL = '{{ url("/") }}';
+    const HEADER_API_BASE_URL = '{{ url("/api/products") }}';
+
     // Mobile menu toggle
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
     const mobileMenu = document.getElementById('mobile-menu');
@@ -376,24 +383,102 @@
         window.location.href = baseUrl;
     }
 
-    // Search functionality
-    document.getElementById('header-search')?.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            const query = this.value.trim();
-            if (query) {
-                window.location.href = '{{ url("/store") }}?search=' + encodeURIComponent(query);
-            }
-        }
-    });
+    // Search suggestions (header)
+    let headerSearchTimeout = null;
 
-    document.getElementById('mobile-search')?.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            const query = this.value.trim();
-            if (query) {
-                window.location.href = '{{ url("/store") }}?search=' + encodeURIComponent(query);
-            }
+    function hideHeaderSearchSuggestions() {
+        const box = document.getElementById('header-search-suggestions');
+        if (box) {
+            box.classList.add('hidden');
+            box.innerHTML = '';
         }
-    });
+    }
+
+    async function loadHeaderSearchSuggestions(query) {
+        const box = document.getElementById('header-search-suggestions');
+        if (!box) return;
+
+        if (!query || query.length < 2) {
+            hideHeaderSearchSuggestions();
+            return;
+        }
+
+        try {
+            const url = `${HEADER_API_BASE_URL}?per_page=5&search=${encodeURIComponent(query)}&sort_by=view_count&sort_order=desc`;
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (!data.success || !data.data || data.data.length === 0) {
+                hideHeaderSearchSuggestions();
+                return;
+            }
+
+            box.innerHTML = data.data.map(product => `
+                <button type="button"
+                        class="w-full text-left px-4 py-2 flex items-center gap-2 hover:bg-slate-800 transition-colors"
+                        data-id="${product.id}"
+                        data-title="${(product.title || '').replace(/"/g, '&quot;')}">
+                    <span class="flex-1 truncate text-slate-100">${product.title || ''}</span>
+                    ${product.category ? `<span class="px-2 py-0.5 bg-slate-800 text-slate-400 rounded text-[11px] flex-shrink-0">${product.category}</span>` : ''}
+                </button>
+            `).join('');
+
+            box.classList.remove('hidden');
+        } catch (e) {
+            console.error('Error loading header search suggestions:', e);
+            hideHeaderSearchSuggestions();
+        }
+    }
+
+    // Search functionality (header + mobile)
+    const headerSearchInput = document.getElementById('header-search');
+    const mobileSearchInput = document.getElementById('mobile-search');
+    const headerSuggestionsBox = document.getElementById('header-search-suggestions');
+
+    if (headerSearchInput) {
+        // Gợi ý khi gõ
+        headerSearchInput.addEventListener('input', (e) => {
+            const value = e.target.value.trim();
+            clearTimeout(headerSearchTimeout);
+            headerSearchTimeout = setTimeout(() => {
+                loadHeaderSearchSuggestions(value);
+            }, 250);
+        });
+
+        // Enter để chuyển sang trang store với search
+        headerSearchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const query = headerSearchInput.value.trim();
+                if (query) {
+                    hideHeaderSearchSuggestions();
+                    window.location.href = `${HEADER_BASE_URL}/store?search=` + encodeURIComponent(query);
+                }
+            }
+        });
+    }
+
+    if (headerSuggestionsBox) {
+        headerSuggestionsBox.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-id]');
+            if (!btn) return;
+
+            const id = btn.getAttribute('data-id');
+            if (id) {
+                window.location.href = `${HEADER_BASE_URL}/game/${id}`;
+            }
+        });
+    }
+
+    if (mobileSearchInput) {
+        mobileSearchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const query = this.value.trim();
+                if (query) {
+                    window.location.href = `${HEADER_BASE_URL}/store?search=` + encodeURIComponent(query);
+                }
+            }
+        });
+    }
 
     function updateCartCount() {
         const cart = JSON.parse(localStorage.getItem('cart') || '[]');
@@ -433,13 +518,13 @@
                     const icon = categoryIcons[cat.category] || categoryIcons['default'];
                     return `
                         <a href="${baseUrl}/store?category=${encodeURIComponent(cat.category)}" 
-                           class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-slate-700 transition-colors group/item">
-                            <div class="w-8 h-8 bg-game-accent/20 rounded-lg flex items-center justify-center group-hover/item:bg-game-accent/30 transition-colors">
-                                <span class="material-icons-outlined text-lg text-game-accent">${icon}</span>
+                           class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-700 transition-colors group/item">
+                            <div class="w-7 h-7 bg-game-accent/20 rounded-lg flex items-center justify-center group-hover/item:bg-game-accent/30 transition-colors">
+                                <span class="material-icons-outlined text-base text-game-accent">${icon}</span>
                             </div>
                             <div class="flex-1">
-                                <span class="font-medium text-white text-sm">${cat.category}</span>
-                                <span class="text-xs text-slate-400 ml-2">(${cat.count})</span>
+                                <span class="font-medium text-white text-xs">${cat.category}</span>
+                                <span class="text-[11px] text-slate-400 ml-2">(${cat.count})</span>
                             </div>
                         </a>
                     `;

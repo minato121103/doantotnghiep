@@ -8,27 +8,31 @@
         <div class="container mx-auto px-4">
             <div class="flex flex-col lg:flex-row gap-8">
                 <!-- Sidebar Filters -->
-                <aside class="lg:w-72 flex-shrink-0">
-                    <div class="bg-white rounded-2xl border border-slate-200 p-6 sticky top-24">
+                <aside class="lg:w-64 flex-shrink-0">
+                    <div class="bg-white rounded-2xl border border-slate-200 p-4 sticky top-24">
                         <!-- Search -->
-                        <div class="mb-6">
+                        <div class="mb-4">
                             <div class="relative">
                                 <input type="text" 
                                        id="search-input"
                                        placeholder="Tìm kiếm game..." 
-                                       class="w-full px-4 py-2 pl-10 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-game-accent/20 focus:border-game-accent text-sm">
+                                       class="w-full px-3 py-1.5 pl-9 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-game-accent/20 focus:border-game-accent text-xs">
                                 <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                                 </svg>
+                                <!-- Gợi ý tìm kiếm -->
+                                <div id="search-suggestions" class="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg hidden z-30 max-h-64 overflow-y-auto text-xs">
+                                    <!-- Suggestions will be rendered here -->
+                                </div>
                             </div>
                         </div>
                         
-                        <h3 class="font-heading text-lg font-bold text-slate-800 mb-4">Bộ lọc</h3>
+                        <h3 class="font-heading text-base font-bold text-slate-800 mb-3">Bộ lọc</h3>
                         
                         <!-- Categories -->
-                        <div class="mb-6">
-                            <h4 class="font-semibold text-slate-700 mb-3">Danh mục</h4>
-                            <div class="space-y-2" id="category-filters">
+                        <div class="mb-4">
+                            <h4 class="font-semibold text-slate-700 mb-2 text-sm">Danh mục</h4>
+                            <div class="space-y-1 text-xs" id="category-filters">
                                 <div class="animate-pulse space-y-2">
                                     <div class="h-6 bg-slate-200 rounded w-3/4"></div>
                                     <div class="h-6 bg-slate-200 rounded w-2/3"></div>
@@ -38,9 +42,9 @@
                         </div>
                         
                         <!-- Price Range -->
-                        <div class="mb-6">
-                            <h4 class="font-semibold text-slate-700 mb-3">Khoảng giá</h4>
-                            <div class="space-y-2">
+                        <div class="mb-4">
+                            <h4 class="font-semibold text-slate-700 mb-2 text-sm">Khoảng giá</h4>
+                            <div class="space-y-1 text-xs">
                                 <label class="flex items-center cursor-pointer group">
                                     <input type="radio" name="price" value="" class="w-4 h-4 text-game-accent border-slate-300 focus:ring-game-accent" checked>
                                     <span class="ml-2 text-slate-600 group-hover:text-game-accent transition-colors">Tất cả</span>
@@ -65,9 +69,9 @@
                         </div>
                         
                         <!-- Sort -->
-                        <div class="mb-6">
-                            <h4 class="font-semibold text-slate-700 mb-3">Sắp xếp</h4>
-                            <select id="sort-select" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:ring-2 focus:ring-game-accent/20 focus:border-game-accent">
+                        <div class="mb-4">
+                            <h4 class="font-semibold text-slate-700 mb-2 text-sm">Sắp xếp</h4>
+                            <select id="sort-select" class="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 text-xs focus:outline-none focus:ring-2 focus:ring-game-accent/20 focus:border-game-accent">
                                 <option value="id-desc">Mới nhất</option>
                                 <option value="id-asc">Cũ nhất</option>
                                 <option value="title-asc">Tên A-Z</option>
@@ -78,7 +82,7 @@
                         </div>
                         
                         <!-- Reset Button -->
-                        <button id="reset-filters" class="w-full px-4 py-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">
+                        <button id="reset-filters" class="w-full px-3 py-1.5 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors text-xs">
                             Xóa bộ lọc
                         </button>
                     </div>
@@ -143,12 +147,13 @@
 <script>
     // API Configuration
     const BASE_URL = '{{ url("/") }}';
-    const API_BASE_URL = BASE_URL + '/api/products';
+    const API_BASE_URL = '{{ url("/api/products") }}';
 
     // State
     let currentPage = 1;
     let currentCategory = '';
     let currentSearch = '';
+    let currentPrice = '';
     let currentSort = 'id-desc';
     let currentView = 'grid';
     let perPage = 12;
@@ -183,6 +188,53 @@
         const current = parseFloat(prices[prices.length - 1].replace(/\./g, '').replace(',', '.'));
         if (original <= 0 || current >= original) return 0;
         return Math.round((1 - current / original) * 100);
+    }
+
+    // Gợi ý tìm kiếm (search suggestions)
+    let searchSuggestTimeout = null;
+
+    function hideSearchSuggestions() {
+        const box = document.getElementById('search-suggestions');
+        if (box) {
+            box.classList.add('hidden');
+            box.innerHTML = '';
+        }
+    }
+
+    async function loadSearchSuggestions(query) {
+        const box = document.getElementById('search-suggestions');
+        if (!box) return;
+
+        if (!query || query.length < 2) {
+            hideSearchSuggestions();
+            return;
+        }
+
+        try {
+            const url = `${API_BASE_URL}?per_page=5&search=${encodeURIComponent(query)}&sort_by=view_count&sort_order=desc`;
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (!data.success || !data.data || data.data.length === 0) {
+                hideSearchSuggestions();
+                return;
+            }
+
+            box.innerHTML = data.data.map(product => `
+                <button type="button"
+                        class="w-full text-left px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 transition-colors"
+                        data-id="${product.id}"
+                        data-title="${escapeHtml(product.title)}">
+                    <span class="flex-1 truncate">${escapeHtml(product.title)}</span>
+                    ${product.category ? `<span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px]">${escapeHtml(product.category)}</span>` : ''}
+                </button>
+            `).join('');
+
+            box.classList.remove('hidden');
+        } catch (e) {
+            console.error('Error loading search suggestions:', e);
+            hideSearchSuggestions();
+        }
     }
 
     // Load categories for filter
@@ -242,6 +294,9 @@
             }
             if (currentSearch) {
                 url += `&search=${encodeURIComponent(currentSearch)}`;
+            }
+            if (currentPrice) {
+                url += `&price=${encodeURIComponent(currentPrice)}`;
             }
 
             const response = await fetch(url);
@@ -508,6 +563,37 @@
             `);
         }
 
+        if (currentPrice) {
+            let priceLabel = '';
+            switch (currentPrice) {
+                case '0-50000':
+                    priceLabel = 'Dưới 50.000đ';
+                    break;
+                case '50000-100000':
+                    priceLabel = '50.000đ - 100.000đ';
+                    break;
+                case '100000-500000':
+                    priceLabel = '100.000đ - 500.000đ';
+                    break;
+                case '500000+':
+                    priceLabel = 'Trên 500.000đ';
+                    break;
+            }
+
+            if (priceLabel) {
+                tags.push(`
+                    <span class="inline-flex items-center gap-1 px-3 py-1 bg-game-accent/10 text-game-accent text-sm rounded-full">
+                        Giá: ${priceLabel}
+                        <button onclick="clearPrice()" class="hover:text-game-accent-hover">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </span>
+                `);
+            }
+        }
+
         if (tags.length > 0) {
             container.innerHTML = tags.join('');
             container.classList.remove('hidden');
@@ -532,9 +618,21 @@
         updateActiveFilters();
     }
 
+    function clearPrice() {
+        currentPrice = '';
+        const allPriceInput = document.querySelector('input[name="price"][value=""]');
+        if (allPriceInput) {
+            allPriceInput.checked = true;
+        }
+        currentPage = 1;
+        loadProducts();
+        updateActiveFilters();
+    }
+
     function resetFilters() {
         currentCategory = '';
         currentSearch = '';
+        currentPrice = '';
         currentSort = 'id-desc';
         currentPage = 1;
         
@@ -562,16 +660,73 @@
         loadCategories();
         loadProducts();
         updateActiveFilters();
-    });
 
-    // Search (Enter key)
-    document.getElementById('search-input').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            currentSearch = e.target.value.trim();
-            currentPage = 1;
-            loadProducts();
-            updateActiveFilters();
+        const searchInput = document.getElementById('search-input');
+        const suggestionsBox = document.getElementById('search-suggestions');
+
+        // Gợi ý khi gõ
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                const value = e.target.value.trim();
+                clearTimeout(searchSuggestTimeout);
+                searchSuggestTimeout = setTimeout(() => {
+                    loadSearchSuggestions(value);
+                }, 250);
+            });
+
+            // Search (Enter key)
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    currentSearch = e.target.value.trim();
+                    currentPage = 1;
+                    hideSearchSuggestions();
+                    loadProducts();
+                    updateActiveFilters();
+                }
+            });
         }
+
+        // Click vào gợi ý
+        if (suggestionsBox) {
+            suggestionsBox.addEventListener('click', (e) => {
+                const btn = e.target.closest('button[data-id]');
+                if (!btn) return;
+
+                const title = btn.getAttribute('data-title') || '';
+                const id = btn.getAttribute('data-id');
+
+                if (id) {
+                    // Điều hướng luôn tới trang chi tiết game
+                    window.location.href = `${BASE_URL}/game/${id}`;
+                } else {
+                    // Fallback: dùng text để search
+                    if (searchInput) searchInput.value = title;
+                    currentSearch = title;
+                    currentPage = 1;
+                    hideSearchSuggestions();
+                    loadProducts();
+                    updateActiveFilters();
+                }
+            });
+        }
+
+        // Ẩn gợi ý khi click ra ngoài
+        document.addEventListener('click', (e) => {
+            const wrapper = searchInput?.parentElement;
+            if (wrapper && !wrapper.contains(e.target)) {
+                hideSearchSuggestions();
+            }
+        });
+
+        // Price range filters
+        document.querySelectorAll('input[name="price"]').forEach(input => {
+            input.addEventListener('change', () => {
+                currentPrice = input.value;
+                currentPage = 1;
+                loadProducts();
+                updateActiveFilters();
+            });
+        });
     });
 
     // Sort

@@ -147,7 +147,7 @@
 @push('scripts')
 <script>
     const BASE_URL = '{{ url("/") }}';
-    const API_BASE_URL = BASE_URL + '/api/auth';
+    const API_BASE_URL = '{{ url("/api/auth") }}';
 
     // Toggle password visibility
     function togglePassword(inputId) {

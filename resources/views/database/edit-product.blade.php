@@ -121,8 +121,11 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Detail Description</label>
-                    <textarea id="detail_description" name="detail_description" rows="6" 
-                              class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"></textarea>
+                    <!-- Quill Editor Container -->
+                    <div id="detail_description_editor" style="height: 200px;" class="mb-2"></div>
+                    <!-- Hidden textarea to store HTML content -->
+                    <textarea id="detail_description" name="detail_description" class="hidden"></textarea>
+                    <p class="text-xs text-gray-500 mb-2">Sử dụng thanh công cụ để định dạng văn bản (in đậm, in nghiêng, danh sách, v.v.)</p>
                     <p id="error-detail_description" class="text-red-500 text-sm mt-1 hidden"></p>
                 </div>
             </div>
@@ -147,10 +150,43 @@
     </div>
 @endsection
 
+@push('styles')
+<!-- Quill Editor CSS -->
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+@endpush
+
 @push('scripts')
+<!-- Quill Editor JS -->
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
 <script>
     // API Configuration
     const API_BASE_URL = '{{ url("/api/products") }}';
+    
+    // Initialize Quill Editor
+    let quillEditor = null;
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initialize Quill editor
+        quillEditor = new Quill('#detail_description_editor', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    [{ 'align': [] }],
+                    ['link'],
+                    ['clean']
+                ]
+            },
+            placeholder: 'Nhập mô tả chi tiết sản phẩm...'
+        });
+        
+        // Update hidden textarea when editor content changes
+        quillEditor.on('text-change', function() {
+            const html = quillEditor.root.innerHTML;
+            document.getElementById('detail_description').value = html;
+        });
+    });
     
     // Get product ID from URL: /database/products/{id}/edit
     const urlParts = window.location.pathname.split('/').filter(part => part);
@@ -205,7 +241,14 @@
             document.getElementById('category').value = product.category || '';
             document.getElementById('image').value = product.image || '';
             document.getElementById('short_description').value = product.short_description || '';
-            document.getElementById('detail_description').value = product.detail_description || '';
+            
+            // Set Quill editor content
+            if (quillEditor && product.detail_description) {
+                quillEditor.root.innerHTML = product.detail_description;
+                document.getElementById('detail_description').value = product.detail_description;
+            } else {
+                document.getElementById('detail_description').value = '';
+            }
             document.getElementById('view_count').value = product.view_count || 0;
             document.getElementById('rating_count').value = product.rating_count || 0;
             document.getElementById('average_rating').value = product.average_rating || 0;
@@ -243,6 +286,13 @@
                 }
             }
 
+            // Get Quill editor HTML content before converting FormData
+            if (quillEditor) {
+                const htmlContent = quillEditor.root.innerHTML;
+                // Update hidden textarea
+                document.getElementById('detail_description').value = htmlContent;
+            }
+            
             // Convert FormData to object
             const data = {};
             formData.forEach((value, key) => {

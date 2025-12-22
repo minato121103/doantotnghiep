@@ -19,14 +19,35 @@ class ProductSimpleController extends Controller
     {
         $query = ProductSimple::query();
 
-        #sắp xếp
+        #lọc theo danh mục
         if ($request->has('category') && $request->category) {
             $query->where('category', $request->category);
         }
 
-        #tìm kiếm
+        #tìm kiếm theo tên
         if ($request->has('search') && $request->search) {
             $query->where('title', 'like', '%' . $request->search . '%');
+        }
+
+        #lọc theo khoảng giá (dùng giá hiện tại - số cuối trong chuỗi price)
+        if ($request->has('price') && $request->price) {
+            // Lấy số cuối cùng trong chuỗi price, loại bỏ . và đơn vị đ/₫ rồi ép kiểu số
+            $currentPriceExpr = "CAST(REPLACE(REPLACE(REPLACE(SUBSTRING_INDEX(price, ' ', -1), '.', ''), 'đ', ''), '₫', '') AS UNSIGNED)";
+
+            switch ($request->price) {
+                case '0-50000':
+                    $query->whereRaw("$currentPriceExpr <= ?", [50000]);
+                    break;
+                case '50000-100000':
+                    $query->whereRaw("$currentPriceExpr BETWEEN ? AND ?", [50000, 100000]);
+                    break;
+                case '100000-500000':
+                    $query->whereRaw("$currentPriceExpr BETWEEN ? AND ?", [100000, 500000]);
+                    break;
+                case '500000+':
+                    $query->whereRaw("$currentPriceExpr >= ?", [500000]);
+                    break;
+            }
         }
 
         $sortBy = $request->get('sort_by', 'id');

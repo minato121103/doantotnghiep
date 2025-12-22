@@ -298,7 +298,11 @@
                 </td>
                 <td class="px-2 py-3 whitespace-nowrap">
                     ${user.avatar ? 
-                        `<img src="${user.avatar}" alt="${escapeHtml(user.name)}" class="h-10 w-10 object-cover rounded-full">` :
+                        `<img src="${user.avatar}" 
+                              alt="${escapeHtml(user.name)}" 
+                              referrerpolicy="no-referrer"
+                              onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=' + encodeURIComponent('${(user.name || 'U').charAt(0).toUpperCase()}') + '&background=6366f1&color=fff&size=96';"
+                              class="h-10 w-10 object-cover rounded-full">` :
                         `<div class="h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
                             <span class="text-gray-500 text-xs">${(user.name || 'U').charAt(0).toUpperCase()}</span>
                         </div>`
@@ -347,7 +351,11 @@
                 <div class="flex items-start gap-3">
                     <div class="flex-shrink-0">
                         ${user.avatar ? 
-                            `<img src="${user.avatar}" alt="${escapeHtml(user.name)}" class="h-16 w-16 object-cover rounded-full">` :
+                            `<img src="${user.avatar}" 
+                                  alt="${escapeHtml(user.name)}" 
+                                  referrerpolicy="no-referrer"
+                                  onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=' + encodeURIComponent('${(user.name || 'U').charAt(0).toUpperCase()}') + '&background=6366f1&color=fff&size=96';"
+                                  class="h-16 w-16 object-cover rounded-full">` :
                             `<div class="h-16 w-16 bg-gray-200 rounded-full flex items-center justify-center">
                                 <span class="text-gray-500 text-lg font-semibold">${(user.name || 'U').charAt(0).toUpperCase()}</span>
                             </div>`

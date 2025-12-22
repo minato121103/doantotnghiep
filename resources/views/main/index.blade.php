@@ -4,7 +4,7 @@
 
 @section('content')
     <!-- Hero Section -->
-    <section class="relative pt-36 pb-8 overflow-hidden bg-gradient-to-br from-slate-50 via-indigo-50/50 to-purple-50/50">
+    <section class="relative pt-36 pb-4 overflow-hidden bg-gradient-to-br from-slate-50 via-indigo-50/50 to-purple-50/50">
         <!-- Background -->
         <div class="absolute inset-0 z-0">
             <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1920')] bg-cover bg-center opacity-5"></div>
@@ -43,7 +43,7 @@
                     </div>
                     
                     <!-- Stats -->
-                    <div class="grid grid-cols-3 gap-6 mt-12 pt-8 border-t border-slate-200">
+                    <div class="grid grid-cols-3 gap-6 mt-6 pt-4 border-t border-slate-200">
                         <div>
                             <div class="font-display text-2xl md:text-3xl font-bold text-slate-800">10K+</div>
                             <div class="text-slate-500 text-sm">Tài khoản</div>
@@ -101,7 +101,7 @@
         </div>
         
         <!-- Scroll indicator -->
-        <div class="flex justify-center mt-6 z-20">
+        <div class="flex justify-center mt-2 z-20">
             <div class="w-6 h-10 border-2 border-slate-300 rounded-full flex justify-center">
                 <div class="w-1.5 h-3 bg-game-accent rounded-full mt-2 animate-bounce"></div>
             </div>
@@ -290,14 +290,73 @@
 
 @push('scripts')
 <script>
-    // API Configuration
+    // Cấu hình URL API
     const BASE_URL = '{{ url("/") }}';
-    const API_BASE_URL = BASE_URL + '/api/products';
+    const GAME_BASE_URL = '{{ url("/game") }}';
+    let API_BASE_URL = '{{ url("/api/products") }}';
     
-    // Load featured games
+    // Gọi API, nếu 404 thì thử lại với đường dẫn /public
+    async function fetchAPI(url, options = {}) {
+        const defaultHeaders = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            ...options.headers
+        };
+        
+        try {
+            let response = await fetch(url, {
+                ...options,
+                headers: defaultHeaders
+            });
+            
+            // If 404 and URL doesn't have /public, try with /public
+            if (response.status === 404 && !url.includes('/public/')) {
+                const urlObj = new URL(url, window.location.origin);
+                const pathParts = urlObj.pathname.split('/').filter(p => p);
+                
+                // Insert 'public' after the first part (project name like 'webdoan')
+                if (pathParts.length > 0 && pathParts[0] !== 'public') {
+                    pathParts.splice(1, 0, 'public');
+                    urlObj.pathname = '/' + pathParts.join('/');
+                    console.log('404 detected, retrying with /public:', urlObj.href);
+                    
+                    response = await fetch(urlObj.href, {
+                        ...options,
+                        headers: defaultHeaders
+                    });
+                    
+                    // If successful, update API_BASE_URL for future requests
+                    if (response.ok) {
+                        const newBase = urlObj.origin + urlObj.pathname.split('/api/')[0] + '/api/products';
+                        console.log('Success with /public, updating API_BASE_URL to:', newBase);
+                        API_BASE_URL = newBase;
+                    }
+                }
+            }
+            
+            return response;
+        } catch (error) {
+            console.error('Fetch error:', error);
+            throw error;
+        }
+    }
+    
+    // Log thông tin URL phục vụ debug
+    console.log('API_BASE_URL:', API_BASE_URL);
+    console.log('BASE_URL:', BASE_URL);
+    console.log('Current location:', window.location.href);
+    console.log('Current pathname:', window.location.pathname);
+    
+    // Tải danh sách game nổi bật
     async function loadFeaturedGames() {
         try {
-            const response = await fetch(`${API_BASE_URL}?per_page=6&sort_by=view_count&sort_order=desc`);
+            const apiUrl = `${API_BASE_URL}?per_page=6&sort_by=view_count&sort_order=desc`;
+            console.log('Fetching from:', apiUrl);
+            const response = await fetchAPI(apiUrl);
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             const result = await response.json();
             
             if (result.success && result.data.length > 0) {
@@ -307,14 +366,25 @@
             }
         } catch (error) {
             console.error('Error loading featured games:', error);
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack,
+                API_BASE_URL: API_BASE_URL
+            });
             renderPlaceholderGames('featured-games');
         }
     }
     
-    // Load new releases
+    // Tải danh sách game mới
     async function loadNewReleases() {
         try {
-            const response = await fetch(`${API_BASE_URL}?per_page=6&sort_by=id&sort_order=desc`);
+            const apiUrl = `${API_BASE_URL}?per_page=6&sort_by=id&sort_order=desc`;
+            console.log('Fetching new releases from:', apiUrl);
+            const response = await fetchAPI(apiUrl);
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             const result = await response.json();
             
             if (result.success && result.data.length > 0) {
@@ -324,11 +394,16 @@
             }
         } catch (error) {
             console.error('Error loading new releases:', error);
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack,
+                API_BASE_URL: API_BASE_URL
+            });
             renderPlaceholderGames('new-releases');
         }
     }
 
-    // Render games - horizontal layout (image left, content right)
+    // Hiển thị danh sách game dạng thẻ ngang
     function renderGames(games, containerId) {
         const container = document.getElementById(containerId);
         if (!container) return;
@@ -336,7 +411,7 @@
         container.innerHTML = games.map(game => `
             <div class="group bg-white rounded-xl overflow-hidden border border-slate-200 hover:border-game-accent hover:shadow-lg transition-all card-hover flex">
                 <!-- Left: Image -->
-                <a href="/game/${game.id}" class="flex-shrink-0 w-28 h-28 overflow-hidden">
+                <a href="${GAME_BASE_URL}/${game.id}" class="flex-shrink-0 w-28 h-28 overflow-hidden">
                     <img src="${game.image || 'https://via.placeholder.com/150x150?text=Game'}" 
                          alt="${escapeHtml(game.title)}" 
                          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
@@ -344,7 +419,7 @@
                 <!-- Right: Content -->
                 <div class="flex-1 p-3 flex flex-col justify-between min-w-0">
                     <div>
-                        <a href="/game/${game.id}" class="font-heading font-semibold text-slate-800 text-sm leading-tight line-clamp-2 group-hover:text-game-accent transition-colors">
+                        <a href="${GAME_BASE_URL}/${game.id}" class="font-heading font-semibold text-slate-800 text-sm leading-tight line-clamp-2 group-hover:text-game-accent transition-colors">
                             ${escapeHtml(game.title)}
                         </a>
                         <div class="flex items-center gap-2 mt-1">
@@ -359,7 +434,7 @@
                     </div>
                     <div class="flex items-center justify-between mt-2">
                         ${formatPrice(game.price)}
-                        <a href="/game/${game.id}" class="w-8 h-8 bg-game-accent rounded-lg flex items-center justify-center hover:bg-game-accent-hover transition-colors">
+                        <a href="${GAME_BASE_URL}/${game.id}" class="w-8 h-8 bg-game-accent rounded-lg flex items-center justify-center hover:bg-game-accent-hover transition-colors">
                             <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                             </svg>
@@ -370,7 +445,7 @@
         `).join('');
     }
     
-    // Render placeholder games - horizontal layout
+    // Hiển thị danh sách game giả lập khi lỗi/không có dữ liệu
     function renderPlaceholderGames(containerId) {
         const container = document.getElementById(containerId);
         if (!container) return;
@@ -419,7 +494,7 @@
         `).join('');
     }
     
-    // Countdown timer
+    // Bộ đếm thời gian khuyến mãi
     function updateCountdown() {
         // Set end date (2 days from now for demo)
         const endDate = new Date();
@@ -440,7 +515,7 @@
         document.getElementById('countdown-seconds').textContent = String(seconds).padStart(2, '0');
     }
     
-    // Utility
+    // Escape text để tránh lỗi HTML
     function escapeHtml(text) {
         if (!text) return '';
         const div = document.createElement('div');
@@ -448,7 +523,7 @@
         return div.innerHTML;
     }
     
-    // Format price - extract original and current price
+    // Định dạng chuỗi giá (giá gốc + giá khuyến mãi nếu có)
     function formatPrice(priceStr) {
         if (!priceStr) return '<span class="text-game-accent font-bold">Liên hệ</span>';
         
@@ -483,7 +558,7 @@
         return `<span class="text-game-accent font-bold">${currentPrice}</span>`;
     }
     
-    // Format price for Hero card (larger display)
+    // Định dạng giá riêng cho thẻ Hero (cỡ chữ lớn hơn)
     function formatHeroPrice(priceStr) {
         if (!priceStr) return '<span class="text-game-accent font-bold text-xl">Liên hệ</span>';
         
@@ -512,7 +587,7 @@
         return `<span class="text-game-accent font-bold text-xl">${currentPrice}</span>`;
     }
     
-    // Calculate discount percentage
+    // Tính phần trăm giảm giá từ chuỗi giá
     function calculateDiscount(priceStr) {
         if (!priceStr) return 0;
         
@@ -529,7 +604,7 @@
         return Math.round((1 - current / original) * 100);
     }
     
-    // Extract prices from price string
+    // Tách giá gốc và giá hiện tại từ chuỗi giá
     function extractPrices(priceStr) {
         if (!priceStr) return { original: null, current: null };
         
@@ -550,7 +625,7 @@
         };
     }
     
-    // Render single Hero game card (horizontal layout)
+    // Tạo HTML cho 1 thẻ game trong Hero
     function renderHeroGameCard(game) {
         const discount = calculateDiscount(game.price);
         const prices = extractPrices(game.price);
@@ -558,7 +633,7 @@
         return `
             <div class="group bg-white rounded-xl overflow-hidden border border-game-border shadow-xl hover:shadow-2xl hover:border-game-accent transition-all duration-300 card-hover flex">
                 <!-- Left: Image -->
-                <a href="/game/${game.id}" class="flex-shrink-0 w-24 h-24 overflow-hidden rounded-lg m-3 relative">
+                <a href="${GAME_BASE_URL}/${game.id}" class="flex-shrink-0 w-24 h-24 overflow-hidden rounded-lg m-3 relative">
                     <img src="${game.image || 'https://via.placeholder.com/150x150?text=Game'}" 
                          alt="${escapeHtml(game.title)}" 
                          class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
@@ -567,7 +642,7 @@
                 <!-- Right: Content -->
                 <div class="flex-1 py-3 pr-3 flex flex-col justify-between min-w-0">
                     <div>
-                        <a href="/game/${game.id}" class="font-heading font-semibold text-slate-800 text-sm leading-tight line-clamp-2 group-hover:text-game-accent transition-colors">
+                        <a href="${GAME_BASE_URL}/${game.id}" class="font-heading font-semibold text-slate-800 text-sm leading-tight line-clamp-2 group-hover:text-game-accent transition-colors">
                             ${escapeHtml(game.title)}
                         </a>
                         <div class="flex items-center gap-2 mt-1.5">
@@ -585,7 +660,7 @@
                             ${prices.original && prices.original !== prices.current ? `<span class="text-slate-400 line-through text-xs">${prices.original}</span>` : ''}
                             <span class="text-game-accent font-bold text-lg">${prices.current || 'Liên hệ'}</span>
                         </div>
-                        <a href="/game/${game.id}" class="w-9 h-9 bg-game-accent rounded-lg flex items-center justify-center hover:bg-game-accent-hover transition-colors shadow-lg hover:shadow-xl hover:scale-105 transform duration-200">
+                        <a href="${GAME_BASE_URL}/${game.id}" class="w-9 h-9 bg-game-accent rounded-lg flex items-center justify-center hover:bg-game-accent-hover transition-colors shadow-lg hover:shadow-xl hover:scale-105 transform duration-200">
                             <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                             </svg>
@@ -596,7 +671,7 @@
         `;
     }
     
-    // Load 2 random games for Hero section
+    // Lấy ngẫu nhiên 2 game cho Hero từ API
     async function loadHeroGame() {
         const loadingEl = document.getElementById('hero-loading');
         const contentEl = document.getElementById('hero-content');
@@ -604,7 +679,12 @@
         if (!loadingEl || !contentEl) return;
         
         try {
-            const response = await fetch(API_BASE_URL);
+            console.log('Fetching hero games from:', API_BASE_URL);
+            const response = await fetchAPI(API_BASE_URL);
+            console.log('Hero games response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             const data = await response.json();
             
             if (data.success && data.data && data.data.length > 0) {
@@ -624,11 +704,16 @@
             }
         } catch (error) {
             console.error('Error loading hero games:', error);
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack,
+                API_BASE_URL: API_BASE_URL
+            });
             renderHeroPlaceholder();
         }
     }
     
-    // Render placeholder for Hero section (2 games)
+    // Hiển thị 2 game giả lập cho Hero khi không gọi được API
     function renderHeroPlaceholder() {
         const loadingEl = document.getElementById('hero-loading');
         const contentEl = document.getElementById('hero-content');
@@ -646,7 +731,7 @@
         contentEl.classList.remove('hidden');
     }
     
-    // Initialize
+    // Khởi tạo: gọi API và bắt đầu đếm thời gian
     document.addEventListener('DOMContentLoaded', () => {
         loadHeroGame();
         loadFeaturedGames();

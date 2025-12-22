@@ -25,7 +25,7 @@
                 </div>
                 <div class="text-sm sm:text-base">Products</div>
             </a>
-            <a href="/" class="bg-purple-500 text-white p-4 rounded-lg hover:bg-purple-600 transition duration-200 text-center sm:col-span-2 md:col-span-1">
+            <a href="{{ route('home') }}" class="bg-purple-500 text-white p-4 rounded-lg hover:bg-purple-600 transition duration-200 text-center sm:col-span-2 md:col-span-1">
                 <div class="text-2xl font-bold">←</div>
                 <div class="text-sm sm:text-base">Back to Home</div>
             </a>
@@ -89,13 +89,23 @@
 @push('scripts')
 <script>
     // API Configuration
-    const API_BASE_URL = '/api/products';
+    const API_BASE_URL = '{{ url("/api/products") }}';
     
     // Load products count from API
     async function loadProductsCount() {
         try {
             // Get products with minimal data (per_page=1 to minimize data transfer)
-            const response = await fetch(`${API_BASE_URL}?per_page=1`);
+            const response = await fetch(`${API_BASE_URL}?per_page=1`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const result = await response.json();
             
             const productsCountText = document.getElementById('products-count-text');
@@ -112,6 +122,11 @@
             }
         } catch (error) {
             console.error('Error loading products count:', error);
+            console.error('API_BASE_URL:', API_BASE_URL);
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack
+            });
             // Fallback to 0 on error
             const productsCountText = document.getElementById('products-count-text');
             if (productsCountText) {
