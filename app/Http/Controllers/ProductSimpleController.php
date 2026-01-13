@@ -29,6 +29,11 @@ class ProductSimpleController extends Controller
             $query->where('title', 'like', '%' . $request->search . '%');
         }
 
+        #lọc theo type (online/offline)
+        if ($request->has('type') && $request->type) {
+            $query->where('type', $request->type);
+        }
+
         #lọc theo khoảng giá (dùng giá hiện tại - số cuối trong chuỗi price)
         if ($request->has('price') && $request->price) {
             // Lấy số cuối cùng trong chuỗi price, loại bỏ . và đơn vị đ/₫ rồi ép kiểu số
@@ -52,7 +57,7 @@ class ProductSimpleController extends Controller
 
         $sortBy = $request->get('sort_by', 'id');
         $sortOrder = $request->get('sort_order', 'asc');
-        $allowedSortFields = ['id', 'title', 'price', 'category', 'view_count', 'average_rating'];
+        $allowedSortFields = ['id', 'title', 'price', 'category', 'view_count'];
         
         if (in_array($sortBy, $allowedSortFields)) {
             $query->orderBy($sortBy, $sortOrder);
@@ -93,10 +98,9 @@ class ProductSimpleController extends Controller
             'short_description' => 'nullable|string',
             'detail_description' => 'nullable|string',
             'category' => 'nullable|string|max:255',
+            'type' => 'nullable|string|in:online,offline',
             'tags' => 'nullable|array',
             'view_count' => 'nullable|integer|min:0',
-            'rating_count' => 'nullable|integer|min:0',
-            'average_rating' => 'nullable|numeric|min:0|max:5',
         ]);
 
         if ($validator->fails()) {
@@ -166,10 +170,9 @@ class ProductSimpleController extends Controller
             'short_description' => 'nullable|string',
             'detail_description' => 'nullable|string',
             'category' => 'nullable|string|max:255',
+            'type' => 'nullable|string|in:online,offline',
             'tags' => 'nullable|array',
             'view_count' => 'nullable|integer|min:0',
-            'rating_count' => 'nullable|integer|min:0',
-            'average_rating' => 'nullable|numeric|min:0|max:5',
         ]);
 
         if ($validator->fails()) {

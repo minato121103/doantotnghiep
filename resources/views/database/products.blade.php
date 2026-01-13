@@ -35,8 +35,37 @@
     <!-- Error Message -->
     <div id="error-message" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 hidden"></div>
 
-    <!-- Sorting Controls -->
+    <!-- Search and Sorting Controls -->
     <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6">
+        <!-- Search -->
+        <div class="mb-4 pb-4 border-b border-gray-200">
+            <div class="flex items-center justify-between mb-2">
+                <label class="block text-sm font-medium text-gray-700">Tìm kiếm sản phẩm</label>
+                <button type="button" id="clear-search" class="text-xs text-gray-500 hover:text-gray-700 hidden">
+                    Xóa tìm kiếm
+                </button>
+            </div>
+            <div class="relative">
+                <input type="text" 
+                       id="search-input"
+                       placeholder="Tìm kiếm theo tên sản phẩm..." 
+                       class="w-full px-3 py-2 pl-10 pr-10 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <button type="button" id="clear-search-btn" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+                <!-- Gợi ý tìm kiếm -->
+                <div id="search-suggestions" class="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg hidden z-30 max-h-64 overflow-y-auto">
+                    <!-- Suggestions will be rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Sorting -->
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div class="mb-2 lg:mb-0">
                 <h3 class="text-base sm:text-lg font-semibold text-gray-800">Sắp xếp</h3>
@@ -54,7 +83,6 @@
                         <option value="price">Giá</option>
                         <option value="category">Danh mục</option>
                         <option value="view_count">Lượt xem</option>
-                        <option value="average_rating">Đánh giá</option>
                     </select>
                 </div>
                 
@@ -96,7 +124,6 @@
                         <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
                         <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                         <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Views</th>
-                        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
                         <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
@@ -156,6 +183,8 @@
     let sortBy = 'id';
     let sortOrder = 'asc';
     let perPage = 10;
+    let currentSearch = '';
+    let searchSuggestTimeout = null;
 
     // DOM Elements
     const loadingIndicator = document.getElementById('loading-indicator');
@@ -174,6 +203,10 @@
     const pageInput = document.getElementById('page_input');
     const lastPageSpan = document.getElementById('last-page');
     const goToPageBtn = document.getElementById('go-to-page');
+    const searchInput = document.getElementById('search-input');
+    const searchSuggestions = document.getElementById('search-suggestions');
+    const clearSearchBtn = document.getElementById('clear-search-btn');
+    const clearSearchLink = document.getElementById('clear-search');
 
     // Sort field labels
     const sortFieldLabels = {
@@ -181,8 +214,7 @@
         'title': 'Tên sản phẩm',
         'price': 'Giá',
         'category': 'Danh mục',
-        'view_count': 'Lượt xem',
-        'average_rating': 'Đánh giá'
+        'view_count': 'Lượt xem'
     };
 
     // Load products from API
@@ -197,6 +229,10 @@
                 sort_by: sortBy,
                 sort_order: sortOrder
             });
+
+            if (currentSearch) {
+                params.append('search', currentSearch);
+            }
 
             const response = await fetch(`${API_BASE_URL}?${params}`);
             const result = await response.json();
@@ -217,6 +253,7 @@
             renderProducts(data);
             renderPagination(pagination);
             updateSortDisplay();
+            updateSearchDisplay();
 
             hideLoading();
         } catch (error) {
@@ -276,16 +313,12 @@
                 <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">
                     ${product.view_count ?? 0}
                 </td>
-                <td class="px-2 py-3 whitespace-nowrap text-sm text-gray-900">
-                    ${product.average_rating ? 
-                        `${parseFloat(product.average_rating).toFixed(1)}<div class="text-xs text-gray-500">(${product.rating_count || 0})</div>` :
-                        'N/A'
-                    }
-                </td>
                 <td class="px-2 py-3 whitespace-nowrap text-sm font-medium">
                     ${product.id ? `
                         <div class="flex flex-col space-y-1">
-                            <a href="${BASE_URL}/database/products/${product.id}/edit?page=${currentPage}" class="text-blue-600 hover:text-blue-900 text-xs">Edit</a>
+                            <a href="${BASE_URL}/database/products/${product.id}/edit?page=${currentPage}&sort_by=${sortBy}&sort_order=${sortOrder}" 
+                               onclick="saveListUrl(); return true;" 
+                               class="text-blue-600 hover:text-blue-900 text-xs">Edit</a>
                             <button onclick="deleteProduct(${product.id})" class="text-red-600 hover:text-red-900 text-xs text-left">Delete</button>
                         </div>
                     ` : `
@@ -331,19 +364,12 @@
                                 <span class="text-gray-500">Views:</span>
                                 <span class="font-medium text-gray-900 ml-1">${product.view_count ?? 0}</span>
                             </div>
-                            <div>
-                                <span class="text-gray-500">Rating:</span>
-                                <span class="font-medium text-gray-900 ml-1">
-                                    ${product.average_rating ? 
-                                        `${parseFloat(product.average_rating).toFixed(1)} (${product.rating_count || 0})` :
-                                        'N/A'
-                                    }
-                                </span>
-                            </div>
                         </div>
                         ${product.id ? `
                             <div class="flex gap-2">
-                                <a href="${BASE_URL}/database/products/${product.id}/edit?page=${currentPage}" class="flex-1 bg-blue-500 text-white px-3 py-1.5 rounded text-xs text-center hover:bg-blue-600 transition">
+                                <a href="${BASE_URL}/database/products/${product.id}/edit?page=${currentPage}&sort_by=${sortBy}&sort_order=${sortOrder}" 
+                                   onclick="saveListUrl(); return true;" 
+                                   class="flex-1 bg-blue-500 text-white px-3 py-1.5 rounded text-xs text-center hover:bg-blue-600 transition">
                                     Edit
                                 </a>
                                 <button onclick="deleteProduct(${product.id})" class="flex-1 bg-red-500 text-white px-3 py-1.5 rounded text-xs hover:bg-red-600 transition">
@@ -475,6 +501,18 @@
         sortOrderSelect.value = sortOrder;
     }
 
+    // Update search display
+    function updateSearchDisplay() {
+        const hasSearch = currentSearch || (searchInput && searchInput.value.trim());
+        if (hasSearch && clearSearchBtn && clearSearchLink) {
+            clearSearchBtn.classList.remove('hidden');
+            clearSearchLink.classList.remove('hidden');
+        } else if (clearSearchBtn && clearSearchLink) {
+            clearSearchBtn.classList.add('hidden');
+            clearSearchLink.classList.add('hidden');
+        }
+    }
+
     // Utility functions
     function showLoading() {
         loadingIndicator.classList.remove('hidden');
@@ -499,6 +537,61 @@
         return div.innerHTML;
     }
 
+    // Search suggestions functions
+    function hideSearchSuggestions() {
+        if (searchSuggestions) {
+            searchSuggestions.classList.add('hidden');
+            searchSuggestions.innerHTML = '';
+        }
+    }
+
+    async function loadSearchSuggestions(query) {
+        if (!searchSuggestions) return;
+
+        if (!query || query.length < 2) {
+            hideSearchSuggestions();
+            return;
+        }
+
+        try {
+            const url = `${API_BASE_URL}?per_page=5&search=${encodeURIComponent(query)}&sort_by=view_count&sort_order=desc`;
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (!data.success || !data.data || data.data.length === 0) {
+                hideSearchSuggestions();
+                return;
+            }
+
+            searchSuggestions.innerHTML = data.data.map(product => `
+                <button type="button"
+                        class="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-gray-50 transition-colors text-sm"
+                        data-id="${product.id}"
+                        data-title="${escapeHtml(product.title)}">
+                    <span class="flex-1 truncate">${escapeHtml(product.title)}</span>
+                    ${product.category ? `<span class="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">${escapeHtml(product.category)}</span>` : ''}
+                </button>
+            `).join('');
+
+            searchSuggestions.classList.remove('hidden');
+
+            // Add click event listeners to suggestions
+            searchSuggestions.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const title = btn.getAttribute('data-title');
+                    searchInput.value = title;
+                    currentSearch = title;
+                    currentPage = 1;
+                    hideSearchSuggestions();
+                    loadProducts(1);
+                });
+            });
+        } catch (e) {
+            console.error('Error loading search suggestions:', e);
+            hideSearchSuggestions();
+        }
+    }
+
     // Event listeners
     applySortBtn.addEventListener('click', () => {
         sortBy = sortBySelect.value;
@@ -509,8 +602,38 @@
     resetSortBtn.addEventListener('click', () => {
         sortBy = 'id';
         sortOrder = 'asc';
+        currentSearch = '';
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        hideSearchSuggestions();
         loadProducts(1);
     });
+
+    // Clear search
+    if (clearSearchBtn) {
+        clearSearchBtn.addEventListener('click', () => {
+            currentSearch = '';
+            if (searchInput) {
+                searchInput.value = '';
+            }
+            hideSearchSuggestions();
+            updateSearchDisplay();
+            loadProducts(1);
+        });
+    }
+
+    if (clearSearchLink) {
+        clearSearchLink.addEventListener('click', () => {
+            currentSearch = '';
+            if (searchInput) {
+                searchInput.value = '';
+            }
+            hideSearchSuggestions();
+            updateSearchDisplay();
+            loadProducts(1);
+        });
+    }
 
     goToPageBtn.addEventListener('click', () => {
         const page = parseInt(pageInput.value);
@@ -537,9 +660,17 @@
         }
     });
 
+    // Function to save current list URL before navigating to edit page
+    // Make it global so it can be called from onclick handlers
+    window.saveListUrl = function() {
+        const listUrl = `${BASE_URL}/database/products?page=${currentPage}&sort_by=${sortBy}&sort_order=${sortOrder}`;
+        localStorage.setItem('productsListUrl', listUrl);
+        console.log('Saved list URL:', listUrl);
+    };
+
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
-        // Get initial sort params from URL if available
+        // Get initial params from URL if available
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('sort_by')) {
             sortBy = urlParams.get('sort_by');
@@ -550,8 +681,46 @@
         if (urlParams.get('page')) {
             currentPage = parseInt(urlParams.get('page'));
         }
+        if (urlParams.get('search')) {
+            currentSearch = urlParams.get('search');
+            if (searchInput) {
+                searchInput.value = currentSearch;
+            }
+        }
+
+        // Search input event listeners
+        if (searchInput) {
+            // Show suggestions while typing
+            searchInput.addEventListener('input', (e) => {
+                const value = e.target.value.trim();
+                updateSearchDisplay();
+                clearTimeout(searchSuggestTimeout);
+                searchSuggestTimeout = setTimeout(() => {
+                    loadSearchSuggestions(value);
+                }, 250);
+            });
+
+            // Search on Enter key
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    currentSearch = e.target.value.trim();
+                    currentPage = 1;
+                    hideSearchSuggestions();
+                    loadProducts(1);
+                }
+            });
+
+            // Hide suggestions when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!searchInput.contains(e.target) && !searchSuggestions.contains(e.target)) {
+                    hideSearchSuggestions();
+                }
+            });
+        }
 
         loadProducts(currentPage);
+        updateSearchDisplay();
     });
 </script>
 @endpush

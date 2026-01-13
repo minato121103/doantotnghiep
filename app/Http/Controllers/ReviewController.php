@@ -119,19 +119,23 @@ class ReviewController extends Controller
             ], 403);
         }
 
-        // Check if order is completed
-        if ($order->status !== 'completed') {
-            return response()->json([
-                'success' => false,
-                'message' => 'You can only review completed orders'
-            ], 400);
-        }
-
         // Check if review already exists for this order
         if (Review::where('order_id', $request->order_id)->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'You have already reviewed this order'
+            ], 400);
+        }
+        
+        // Check if user has already reviewed this product (mỗi sản phẩm chỉ được đánh giá 1 lần)
+        $hasReviewedProduct = Review::where('buyer_id', $user->id)
+            ->where('product_simple_id', $order->product_simple_id)
+            ->exists();
+            
+        if ($hasReviewedProduct) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn đã đánh giá sản phẩm này rồi'
             ], 400);
         }
 
@@ -147,17 +151,7 @@ class ReviewController extends Controller
                 'is_verified_purchase' => true,
             ]);
 
-            // Update product rating statistics
-            $product = ProductSimple::find($order->product_simple_id);
-            if ($product) {
-                $totalReviews = Review::where('product_simple_id', $product->id)->count();
-                $averageRating = Review::where('product_simple_id', $product->id)->avg('rating');
-                
-                $product->update([
-                    'rating_count' => $totalReviews,
-                    'average_rating' => round($averageRating, 2),
-                ]);
-            }
+            // Product rating statistics are now calculated dynamically from reviews
 
             DB::commit();
 
@@ -255,17 +249,7 @@ class ReviewController extends Controller
         try {
             $review->update($request->only(['rating', 'comment', 'images']));
 
-            // Update product rating statistics
-            $product = ProductSimple::find($review->product_simple_id);
-            if ($product) {
-                $totalReviews = Review::where('product_simple_id', $product->id)->count();
-                $averageRating = Review::where('product_simple_id', $product->id)->avg('rating');
-                
-                $product->update([
-                    'rating_count' => $totalReviews,
-                    'average_rating' => round($averageRating, 2),
-                ]);
-            }
+            // Product rating statistics are now calculated dynamically from reviews
 
             DB::commit();
 
@@ -327,19 +311,7 @@ class ReviewController extends Controller
         try {
             $review->delete();
 
-            // Update product rating statistics
-            $product = ProductSimple::find($productId);
-            if ($product) {
-                $totalReviews = Review::where('product_simple_id', $productId)->count();
-                $averageRating = $totalReviews > 0 
-                    ? Review::where('product_simple_id', $productId)->avg('rating') 
-                    : 0;
-                
-                $product->update([
-                    'rating_count' => $totalReviews,
-                    'average_rating' => round($averageRating, 2),
-                ]);
-            }
+            // Product rating statistics are now calculated dynamically from reviews
 
             DB::commit();
 
@@ -367,8 +339,8 @@ class ReviewController extends Controller
     public function getByProduct($productId, Request $request)
     {
         $query = Review::with(['buyer', 'order'])
-            ->where('product_simple_id', $productId)
-            ->where('is_verified_purchase', true);
+            ->where('product_simple_id', $productId);
+            // Hiển thị tất cả reviews, không chỉ verified purchases
 
         // Filter by rating
         if ($request->has('rating') && $request->rating) {
@@ -399,6 +371,54 @@ class ReviewController extends Controller
                 'total' => $reviews->total(),
                 'last_page' => $reviews->lastPage(),
             ]
+        ]);
+    }
+
+    /**
+     * Check if user can review a product (has purchased)
+     *
+     * @param int $productId
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function checkCanReview($productId, Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated',
+                'can_review' => false
+            ], 401);
+        }
+
+        // Check if user has purchased this product (has order with this product)
+        $orders = Order::where('buyer_id', $user->id)
+            ->where('product_simple_id', $productId)
+            ->orderBy('created_at', 'desc')
+            ->get(['id', 'order_code', 'created_at', 'status']);
+
+        if ($orders->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'can_review' => false,
+                'reason' => 'Bạn chưa mua sản phẩm này'
+            ]);
+        }
+
+        // Return eligible orders (all orders containing this product)
+        return response()->json([
+            'success' => true,
+            'can_review' => true,
+            'eligible_orders' => $orders->map(function($order) {
+                return [
+                    'id' => $order->id,
+                    'order_code' => $order->order_code,
+                    'created_at' => $order->created_at,
+                    'status' => $order->status
+                ];
+            })
         ]);
     }
 }

@@ -8,7 +8,10 @@ use App\Http\Controllers\SteamAccountController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\WalletController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ProductDiscussionController;
+use App\Http\Controllers\RecommendationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -106,6 +109,9 @@ Route::middleware('auth:sanctum')->prefix('orders')->group(function () {
     // Get all orders (user sees own, admin sees all)
     Route::get('/', [OrderController::class, 'index']);
     
+    // Batch create orders (for cart checkout)
+    Route::post('/batch', [OrderController::class, 'batchStore']);
+    
     // Create a new order
     Route::post('/', [OrderController::class, 'store']);
     
@@ -125,11 +131,14 @@ Route::prefix('reviews')->group(function () {
     // Get reviews by product
     Route::get('/product/{productId}', [ReviewController::class, 'getByProduct']);
     
-    // Get a single review by ID
+    // Get a single review by ID (must be last to avoid route conflicts)
     Route::get('/{id}', [ReviewController::class, 'show']);
 });
 
 Route::middleware('auth:sanctum')->prefix('reviews')->group(function () {
+    // Check if user can review a product (must be before /{id} route)
+    Route::get('/check/{productId}', [ReviewController::class, 'checkCanReview']);
+    
     // Create a new review
     Route::post('/', [ReviewController::class, 'store']);
     
@@ -139,6 +148,27 @@ Route::middleware('auth:sanctum')->prefix('reviews')->group(function () {
     
     // Delete a review
     Route::delete('/{id}', [ReviewController::class, 'destroy']);
+});
+
+// Product Discussion API Routes
+Route::prefix('discussions')->group(function () {
+    // Get discussions by product (public)
+    Route::get('/product/{productId}', [ProductDiscussionController::class, 'index']);
+    
+    // Get a single discussion (public)
+    Route::get('/{id}', [ProductDiscussionController::class, 'show']);
+    
+    // Like/Unlike discussion (public - không cần auth)
+    Route::post('/{id}/like', [ProductDiscussionController::class, 'like']);
+    Route::post('/{id}/unlike', [ProductDiscussionController::class, 'unlike']);
+});
+
+Route::middleware('auth:sanctum')->prefix('discussions')->group(function () {
+    // Create a new discussion (auth required)
+    Route::post('/', [ProductDiscussionController::class, 'store']);
+    
+    // Delete own discussion (auth required)
+    Route::delete('/{id}', [ProductDiscussionController::class, 'destroy']);
 });
 
 // Transaction API Routes
@@ -161,4 +191,36 @@ Route::middleware('auth:sanctum')->prefix('transactions')->group(function () {
     // Update transaction status (Admin only)
     Route::put('/{id}/status', [TransactionController::class, 'updateStatus']);
     Route::patch('/{id}/status', [TransactionController::class, 'updateStatus']);
+});
+
+// Wallet API Routes
+Route::middleware('auth:sanctum')->prefix('wallet')->group(function () {
+    // Create VNPay payment URL
+    Route::post('/create-payment', [WalletController::class, 'createPayment']);
+});
+
+// VNPay Callback Routes (no auth required)
+Route::prefix('wallet')->group(function () {
+    // VNPay callback (return URL)
+    Route::get('/vnpay/callback', [WalletController::class, 'callback']);
+    
+    // VNPay IPN (Instant Payment Notification)
+    Route::post('/vnpay/ipn', [WalletController::class, 'ipn']);
+});
+
+// Recommendation API Routes
+Route::prefix('recommendations')->group(function () {
+    // Public routes - Get recommendations
+    Route::get('/products/{productId}/similar', [RecommendationController::class, 'getSimilarProducts']);
+    Route::get('/popular', [RecommendationController::class, 'getPopularProducts']);
+});
+
+// Authenticated recommendation routes
+Route::middleware('auth:sanctum')->prefix('recommendations')->group(function () {
+    // Get personalized recommendations for current user
+    Route::get('/for-me', [RecommendationController::class, 'getUserRecommendations']);
+    Route::get('/user/{userId}', [RecommendationController::class, 'getUserRecommendations']);
+    
+    // Record user interaction (for improving recommendations)
+    Route::post('/interaction', [RecommendationController::class, 'recordInteraction']);
 });

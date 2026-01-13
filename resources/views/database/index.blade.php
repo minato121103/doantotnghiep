@@ -84,6 +84,21 @@
             </a>
         </div>
     </div>
+
+    <!-- AI Tools -->
+    <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mt-6">
+        <h2 class="text-lg sm:text-xl font-semibold mb-4 text-gray-800">🤖 AI Tools</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <a href="{{ route('database.recommendations') }}" class="bg-gradient-to-r from-purple-500 to-indigo-500 text-white p-4 rounded-lg hover:from-purple-600 hover:to-indigo-600 transition duration-200 text-center">
+                <div class="text-base sm:text-lg font-semibold">🎯 AI Recommendation System</div>
+                <div class="text-xs sm:text-sm opacity-90">Train & manage product recommendations</div>
+            </a>
+            <div class="bg-gray-200 text-gray-500 p-4 rounded-lg text-center cursor-not-allowed">
+                <div class="text-base sm:text-lg font-semibold">📊 Analytics Dashboard</div>
+                <div class="text-xs sm:text-sm">Coming soon...</div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')

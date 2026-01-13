@@ -63,6 +63,17 @@
                     </div>
 
                     <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                        <select id="type" name="type" 
+                                class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base">
+                            <option value="">-- Chọn Type --</option>
+                            <option value="online">Online</option>
+                            <option value="offline">Offline</option>
+                        </select>
+                        <p id="error-type" class="text-red-500 text-sm mt-1 hidden"></p>
+                    </div>
+
+                    <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Image URL</label>
                         <input type="url" id="image" name="image" 
                                class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
@@ -91,20 +102,6 @@
                         <p id="error-view_count" class="text-red-500 text-sm mt-1 hidden"></p>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Rating Count</label>
-                        <input type="number" id="rating_count" name="rating_count" min="0"
-                               class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base">
-                        <p id="error-rating_count" class="text-red-500 text-sm mt-1 hidden"></p>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Average Rating</label>
-                        <input type="number" id="average_rating" name="average_rating" 
-                               step="0.01" min="0" max="5"
-                               class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base">
-                        <p id="error-average_rating" class="text-red-500 text-sm mt-1 hidden"></p>
-                    </div>
                 </div>
             </div>
 
@@ -204,6 +201,16 @@
         hideLoading();
     }
     
+    // Save current list URL from query params for redirect after update
+    const urlParams = new URLSearchParams(window.location.search);
+    const page = urlParams.get('page') || '1';
+    const sortBy = urlParams.get('sort_by') || 'id';
+    const sortOrder = urlParams.get('sort_order') || 'asc';
+    const listUrl = `{{ url("/database/products") }}?page=${page}&sort_by=${sortBy}&sort_order=${sortOrder}`;
+    localStorage.setItem('productsListUrl', listUrl);
+    console.log('Edit page: Saved list URL to localStorage:', listUrl);
+    console.log('Edit page: Query params - page:', page, 'sort_by:', sortBy, 'sort_order:', sortOrder);
+    
     // DOM Elements
     const loadingIndicator = document.getElementById('loading-indicator');
     const errorMessage = document.getElementById('error-message');
@@ -239,6 +246,7 @@
             document.getElementById('title').value = product.title || '';
             document.getElementById('price').value = product.price || '';
             document.getElementById('category').value = product.category || '';
+            document.getElementById('type').value = product.type || '';
             document.getElementById('image').value = product.image || '';
             document.getElementById('short_description').value = product.short_description || '';
             
@@ -250,8 +258,6 @@
                 document.getElementById('detail_description').value = '';
             }
             document.getElementById('view_count').value = product.view_count || 0;
-            document.getElementById('rating_count').value = product.rating_count || 0;
-            document.getElementById('average_rating').value = product.average_rating || 0;
             
             // Handle tags - convert array to comma-separated string
             if (Array.isArray(product.tags)) {
@@ -299,10 +305,8 @@
                 if (key === 'tags' && value) {
                     const tagsArray = value.split(',').map(tag => tag.trim()).filter(tag => tag);
                     data[key] = tagsArray;
-                } else if (key === 'view_count' || key === 'rating_count') {
+                } else if (key === 'view_count') {
                     data[key] = value ? parseInt(value) : 0;
-                } else if (key === 'average_rating') {
-                    data[key] = value ? parseFloat(value) : 0;
                 } else {
                     data[key] = value || null;
                 }
@@ -341,9 +345,23 @@
             showSuccess('Cập nhật sản phẩm thành công! Đang chuyển hướng...');
             clearValidationErrors();
             
-            // Redirect after 1.5 seconds
+            // Redirect after 1.5 seconds - get saved URL from localStorage
             setTimeout(() => {
-                window.location.href = '{{ url("/database/products") }}';
+                const savedUrl = localStorage.getItem('productsListUrl');
+                console.log('Saved URL from localStorage:', savedUrl);
+                if (savedUrl) {
+                    window.location.href = savedUrl;
+                    localStorage.removeItem('productsListUrl'); // Clean up after use
+                } else {
+                    // Fallback: try to get from URL params or default to first page
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const page = urlParams.get('page') || '1';
+                    const sortBy = urlParams.get('sort_by') || 'id';
+                    const sortOrder = urlParams.get('sort_order') || 'asc';
+                    const fallbackUrl = `{{ url("/database/products") }}?page=${page}&sort_by=${sortBy}&sort_order=${sortOrder}`;
+                    console.log('Using fallback URL:', fallbackUrl);
+                    window.location.href = fallbackUrl;
+                }
             }, 1500);
 
         } catch (error) {

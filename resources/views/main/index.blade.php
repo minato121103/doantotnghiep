@@ -347,20 +347,79 @@
     console.log('Current location:', window.location.href);
     console.log('Current pathname:', window.location.pathname);
     
-    // Tải danh sách game nổi bật
+    // Tải danh sách game nổi bật - Sử dụng AI Recommendation System
     async function loadFeaturedGames() {
+        const container = document.getElementById('featured-games');
+        
+        // Hiển thị loading skeleton
+        container.innerHTML = `
+            <div class="animate-pulse bg-white rounded-xl border border-slate-200 p-3 flex">
+                <div class="w-28 h-28 bg-slate-200 rounded-lg flex-shrink-0"></div>
+                <div class="flex-1 ml-3 space-y-2">
+                    <div class="h-4 bg-slate-200 rounded w-3/4"></div>
+                    <div class="h-3 bg-slate-200 rounded w-1/2"></div>
+                    <div class="h-4 bg-slate-200 rounded w-1/4"></div>
+                </div>
+            </div>
+        `.repeat(6);
+        
         try {
-            const apiUrl = `${API_BASE_URL}?per_page=6&sort_by=view_count&sort_order=desc`;
-            console.log('Fetching from:', apiUrl);
-            const response = await fetchAPI(apiUrl);
-            console.log('Response status:', response.status);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const result = await response.json();
+            let games = [];
+            const token = localStorage.getItem('auth_token');
             
-            if (result.success && result.data.length > 0) {
-                renderGames(result.data, 'featured-games');
+            // Bước 1: Nếu user đã đăng nhập, thử lấy personalized recommendations
+            if (token) {
+                try {
+                    const personalizedResponse = await fetch(`${BASE_URL}/api/recommendations/for-me?limit=6`, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    const personalizedData = await personalizedResponse.json();
+                    
+                    if (personalizedData.success && personalizedData.data && personalizedData.data.length >= 3) {
+                        games = personalizedData.data;
+                        console.log('🤖 Loaded personalized AI recommendations:', games.length, 'products');
+                    }
+                } catch (aiError) {
+                    console.warn('Personalized recommendations not available:', aiError);
+                }
+            }
+            
+            // Bước 2: Nếu không có personalized, thử lấy popular recommendations
+            if (games.length < 3) {
+                try {
+                    const popularResponse = await fetch(`${BASE_URL}/api/recommendations/popular?limit=6`);
+                    const popularData = await popularResponse.json();
+                    
+                    if (popularData.success && popularData.data && popularData.data.length > 0) {
+                        games = popularData.data;
+                        console.log('🔥 Loaded popular recommendations:', games.length, 'products');
+                    }
+                } catch (popError) {
+                    console.warn('Popular recommendations not available:', popError);
+                }
+            }
+            
+            // Bước 3: Fallback - lấy theo view_count và rating (products API)
+            if (games.length < 3) {
+                const apiUrl = `${API_BASE_URL}?per_page=6&sort_by=view_count&sort_order=desc`;
+                console.log('📊 Fallback to view_count sort:', apiUrl);
+                const response = await fetchAPI(apiUrl);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.data.length > 0) {
+                        games = result.data;
+                        console.log('📈 Loaded by view_count:', games.length, 'products');
+                    }
+                }
+            }
+            
+            // Render games
+            if (games.length > 0) {
+                renderGames(games, 'featured-games');
             } else {
                 renderPlaceholderGames('featured-games');
             }
@@ -424,21 +483,21 @@
                         </a>
                         <div class="flex items-center gap-2 mt-1">
                             ${game.category ? `<span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded">${escapeHtml(game.category)}</span>` : ''}
-                            <span class="flex items-center text-slate-400 text-xs">
-                                <svg class="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
-                                </svg>
-                                ${game.rating_count || 0}
-                            </span>
                         </div>
                     </div>
                     <div class="flex items-center justify-between mt-2">
                         ${formatPrice(game.price)}
-                        <a href="${GAME_BASE_URL}/${game.id}" class="w-8 h-8 bg-game-accent rounded-lg flex items-center justify-center hover:bg-game-accent-hover transition-colors">
+                        <button type="button"
+                                class="w-8 h-8 bg-game-accent rounded-lg flex items-center justify-center hover:bg-game-accent-hover transition-colors cursor-pointer add-to-cart-btn"
+                                data-product-id="${game.id}"
+                                data-product-title="${escapeHtml(game.title)}"
+                                data-product-image="${game.image || ''}"
+                                data-product-price="${escapeHtml(game.price || '')}"
+                                onclick="return handleAddToCart(this, event);">
                             <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                             </svg>
-                        </a>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -647,12 +706,6 @@
                         </a>
                         <div class="flex items-center gap-2 mt-1.5">
                             ${game.category ? `<span class="px-2 py-0.5 bg-game-accent/10 text-game-accent text-xs font-medium rounded">${escapeHtml(game.category)}</span>` : ''}
-                            <span class="flex items-center text-slate-400 text-xs">
-                                <svg class="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
-                                </svg>
-                                ${game.rating_count || 0}
-                            </span>
                         </div>
                     </div>
                     <div class="flex items-center justify-between mt-2">
@@ -660,11 +713,17 @@
                             ${prices.original && prices.original !== prices.current ? `<span class="text-slate-400 line-through text-xs">${prices.original}</span>` : ''}
                             <span class="text-game-accent font-bold text-lg">${prices.current || 'Liên hệ'}</span>
                         </div>
-                        <a href="${GAME_BASE_URL}/${game.id}" class="w-9 h-9 bg-game-accent rounded-lg flex items-center justify-center hover:bg-game-accent-hover transition-colors shadow-lg hover:shadow-xl hover:scale-105 transform duration-200">
+                        <button type="button"
+                                class="w-9 h-9 bg-game-accent rounded-lg flex items-center justify-center hover:bg-game-accent-hover transition-colors shadow-lg hover:shadow-xl hover:scale-105 transform duration-200 cursor-pointer add-to-cart-btn"
+                                data-product-id="${game.id}"
+                                data-product-title="${escapeHtml(game.title)}"
+                                data-product-image="${game.image || ''}"
+                                data-product-price="${escapeHtml(game.price || '')}"
+                                onclick="return handleAddToCart(this, event);">
                             <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                             </svg>
-                        </a>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -721,14 +780,95 @@
         if (!loadingEl || !contentEl) return;
         
         const placeholders = [
-            { id: 1, title: 'Elden Ring', category: 'RPG', price: '1.200.000đ 720.000đ', image: 'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg', rating_count: 156 },
-            { id: 2, title: 'Cyberpunk 2077', category: 'Action', price: '900.000đ 450.000đ', image: 'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1091500/header.jpg', rating_count: 89 }
+            { id: 1, title: 'Elden Ring', category: 'RPG', price: '1.200.000đ 720.000đ', image: 'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1245620/header.jpg' },
+            { id: 2, title: 'Cyberpunk 2077', category: 'Action', price: '900.000đ 450.000đ', image: 'https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/1091500/header.jpg' }
         ];
         
         contentEl.innerHTML = placeholders.map(game => renderHeroGameCard(game)).join('');
         
         loadingEl.classList.add('hidden');
         contentEl.classList.remove('hidden');
+    }
+    
+    // Handler function để lấy data từ button và gọi addToCart (tương tự trang store)
+    function handleAddToCart(button, event) {
+        // Ngăn chặn hành vi mặc định và propagation để không chuyển trang
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        const productId = parseInt(button.getAttribute('data-product-id'));
+        const productTitle = button.getAttribute('data-product-title') || '';
+        const productImage = button.getAttribute('data-product-image') || '';
+        const productPrice = button.getAttribute('data-product-price') || '';
+
+        addToCart(productId, productTitle, productImage, productPrice);
+
+        return false;
+    }
+
+    // Thêm sản phẩm vào giỏ hàng (localStorage) – copy logic từ trang store
+    function addToCart(productId, productTitle, productImage, productPrice) {
+        let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+
+        const existingIndex = cart.findIndex(item => item.id === productId);
+
+        if (existingIndex >= 0) {
+            cart[existingIndex].quantity += 1;
+        } else {
+            cart.push({
+                id: productId,
+                title: productTitle,
+                image: productImage,
+                price: productPrice,
+                quantity: 1
+            });
+        }
+
+        localStorage.setItem('cart', JSON.stringify(cart));
+
+        updateCartCount();
+        showCartNotification(productTitle);
+    }
+
+    // Cập nhật số lượng giỏ hàng trên header (dùng cùng id 'cart-count')
+    function updateCartCount() {
+        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        const cartCount = document.getElementById('cart-count');
+        if (cartCount) {
+            const total = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
+            cartCount.textContent = total;
+            if (total > 0) {
+                cartCount.classList.remove('hidden');
+            } else {
+                cartCount.classList.add('hidden');
+            }
+        }
+    }
+
+    // Thông báo nhỏ khi thêm vào giỏ
+    function showCartNotification(productTitle) {
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-20 right-4 z-50 bg-white border border-game-border rounded-xl shadow-xl px-4 py-3 flex items-center gap-3 animate-slide-in';
+        notification.innerHTML = `
+            <div class="w-8 h-8 rounded-full bg-game-accent/10 flex items-center justify-center">
+                <svg class="w-5 h-5 text-game-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-sm font-semibold text-slate-800">Đã thêm vào giỏ hàng</p>
+                <p class="text-xs text-slate-500 line-clamp-1">${escapeHtml(productTitle)}</p>
+            </div>
+        `;
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.classList.add('opacity-0', 'translate-y-2');
+            setTimeout(() => notification.remove(), 300);
+        }, 2000);
     }
     
     // Khởi tạo: gọi API và bắt đầu đếm thời gian
@@ -738,6 +878,9 @@
         loadNewReleases();
         updateCountdown();
         setInterval(updateCountdown, 1000);
+
+        // Cập nhật lại số lượng giỏ hàng nếu đã có dữ liệu trong localStorage
+        updateCartCount();
     });
 </script>
 @endpush

@@ -61,5 +61,37 @@ class MainController extends Controller
     {
         return view('main.auth.callback');
     }
+
+    /**
+     * Show cart page
+     */
+    public function cart()
+    {
+        return view('main.cart');
+    }
+
+    /**
+     * Show orders page
+     */
+    public function orders()
+    {
+        return view('main.orders');
+    }
+
+    /**
+     * Show wallet page
+     */
+    public function wallet()
+    {
+        return view('main.wallet');
+    }
+
+    /**
+     * Handle payment callback from VNPay
+     */
+    public function paymentCallback()
+    {
+        return view('main.auth.payment-callback');
+    }
 }
 

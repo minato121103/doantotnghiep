@@ -5,6 +5,8 @@ use App\Http\Controllers\CloudinaryController;
 use App\Http\Controllers\DatabaseController;
 use App\Http\Controllers\MainController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\WalletController;
+use App\Http\Controllers\RecommendationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,8 +22,15 @@ use App\Http\Controllers\AuthController;
 // Main Routes - Game Store
 Route::get('/', [MainController::class, 'index'])->name('home');
 Route::get('/store', [MainController::class, 'store'])->name('store');
+Route::get('/store/offline', [MainController::class, 'store'])->name('store.offline');
+Route::get('/store/online', [MainController::class, 'store'])->name('store.online');
 Route::get('/categories', [MainController::class, 'categories'])->name('categories');
 Route::get('/game/{id}', [MainController::class, 'gameDetail'])->name('game.detail');
+Route::get('/cart', [MainController::class, 'cart'])->name('cart');
+Route::get('/orders', [MainController::class, 'orders'])->name('orders');
+Route::get('/wallet', [MainController::class, 'wallet'])->name('wallet');
+Route::get('/wallet/vnpay/callback', [WalletController::class, 'callback'])->name('wallet.vnpay.callback');
+Route::get('/wallet/payment/callback', [MainController::class, 'paymentCallback'])->name('wallet.payment.callback');
 
 // Authentication Routes
 Route::get('/login', [MainController::class, 'login'])->name('login');
@@ -60,4 +69,12 @@ Route::prefix('database')->name('database.')->group(function () {
     Route::get('/products/create', [DatabaseController::class, 'createProduct'])->name('create-product');
     Route::get('/products/{id}/edit', [DatabaseController::class, 'editProduct'])->name('edit-product');
     Route::get('/table/{tableName}/structure', [DatabaseController::class, 'tableStructure'])->name('table-structure');
+    
+    // AI Recommendation Management Routes
+    Route::get('/recommendations', [RecommendationController::class, 'index'])->name('recommendations');
+    Route::post('/recommendations/train', [RecommendationController::class, 'train'])->name('recommendations.train');
+    Route::get('/recommendations/status', [RecommendationController::class, 'trainingStatus'])->name('recommendations.status');
+    Route::get('/recommendations/history', [RecommendationController::class, 'trainingHistory'])->name('recommendations.history');
+    Route::post('/recommendations/clear-cache', [RecommendationController::class, 'clearCache'])->name('recommendations.clear-cache');
+    Route::delete('/recommendations/logs/{id}', [RecommendationController::class, 'deleteTrainingLog'])->name('recommendations.delete-log');
 });

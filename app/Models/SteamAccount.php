@@ -73,7 +73,11 @@ class SteamAccount extends Model
 
     public function setEmailPasswordAttribute($value)
     {
-        $this->attributes['email_password'] = Crypt::encryptString($value);
+        if (empty($value)) {
+            $this->attributes['email_password'] = null;
+        } else {
+            $this->attributes['email_password'] = Crypt::encryptString($value);
+        }
     }
 
     public function getEmailPasswordAttribute($value)

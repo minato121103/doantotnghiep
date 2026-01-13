@@ -77,7 +77,6 @@
                                 <option value="title-asc">Tên A-Z</option>
                                 <option value="title-desc">Tên Z-A</option>
                                 <option value="view_count-desc">Phổ biến nhất</option>
-                                <option value="average_rating-desc">Đánh giá cao</option>
                             </select>
                         </div>
                         
@@ -154,6 +153,7 @@
     let currentCategory = '';
     let currentSearch = '';
     let currentPrice = '';
+    let currentType = '';
     let currentSort = 'id-desc';
     let currentView = 'grid';
     let perPage = 12;
@@ -298,6 +298,9 @@
             if (currentPrice) {
                 url += `&price=${encodeURIComponent(currentPrice)}`;
             }
+            if (currentType) {
+                url += `&type=${encodeURIComponent(currentType)}`;
+            }
 
             const response = await fetch(url);
             const data = await response.json();
@@ -355,12 +358,6 @@
                         </h3>
                         <div class="flex items-center gap-2 mt-1.5">
                             ${product.category ? `<span class="px-2 py-0.5 bg-game-accent/10 text-game-accent text-xs font-medium rounded">${escapeHtml(product.category)}</span>` : ''}
-                            <span class="flex items-center text-slate-400 text-xs">
-                                <svg class="w-3 h-3 mr-0.5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                                </svg>
-                                ${product.average_rating ? parseFloat(product.average_rating).toFixed(1) : 'N/A'}
-                            </span>
                         </div>
                     </div>
                     <div class="flex items-end justify-between mt-2">
@@ -368,11 +365,17 @@
                             ${prices.original && prices.original !== prices.current ? `<span class="text-slate-400 line-through text-xs">${prices.original}</span>` : ''}
                             <span class="text-game-accent font-bold text-lg">${prices.current || 'Liên hệ'}</span>
                         </div>
-                        <div class="w-8 h-8 bg-game-accent rounded-lg flex items-center justify-center group-hover:bg-game-accent-hover transition-colors">
+                        <button type="button" 
+                                class="w-8 h-8 bg-game-accent rounded-lg flex items-center justify-center group-hover:bg-game-accent-hover transition-colors cursor-pointer add-to-cart-btn" 
+                                data-product-id="${product.id}"
+                                data-product-title="${escapeHtml(product.title)}"
+                                data-product-image="${product.image || ''}"
+                                data-product-price="${escapeHtml(product.price || '')}"
+                                onclick="return handleAddToCart(this, event);">
                             <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                             </svg>
-                        </div>
+                        </button>
                     </div>
                 </div>
             </a>
@@ -402,12 +405,6 @@
                         </div>
                         <div class="flex items-center gap-3 mt-2">
                             ${product.category ? `<span class="px-2 py-0.5 bg-game-accent/10 text-game-accent text-xs font-medium rounded">${escapeHtml(product.category)}</span>` : ''}
-                            <span class="flex items-center text-slate-400 text-sm">
-                                <svg class="w-4 h-4 mr-1 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                                </svg>
-                                ${product.average_rating ? parseFloat(product.average_rating).toFixed(1) : 'N/A'}
-                            </span>
                             <span class="text-slate-400 text-sm">
                                 ${(product.view_count || 0).toLocaleString()} lượt xem
                             </span>
@@ -421,7 +418,13 @@
                             ${prices.original && prices.original !== prices.current ? `<span class="text-slate-400 line-through text-sm">${prices.original}</span>` : ''}
                             <span class="text-game-accent font-bold text-xl">${prices.current || 'Liên hệ'}</span>
                         </div>
-                        <button class="px-4 py-2 bg-game-accent text-white font-semibold rounded-lg hover:bg-game-accent-hover transition-colors flex items-center gap-2">
+                        <button type="button" 
+                                class="px-4 py-2 bg-game-accent text-white font-semibold rounded-lg hover:bg-game-accent-hover transition-colors flex items-center gap-2 add-to-cart-btn"
+                                data-product-id="${product.id}"
+                                data-product-title="${escapeHtml(product.title)}"
+                                data-product-image="${product.image || ''}"
+                                data-product-price="${escapeHtml(product.price || '')}"
+                                onclick="return handleAddToCart(this, event);">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                             </svg>
@@ -594,6 +597,20 @@
             }
         }
 
+        if (currentType) {
+            const typeLabel = currentType === 'offline' ? 'Game Offline' : 'Game Online';
+            tags.push(`
+                <span class="inline-flex items-center gap-1 px-3 py-1 bg-game-accent/10 text-game-accent text-sm rounded-full">
+                    ${typeLabel}
+                    <button onclick="clearType()" class="hover:text-game-accent-hover">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </span>
+            `);
+        }
+
         if (tags.length > 0) {
             container.innerHTML = tags.join('');
             container.classList.remove('hidden');
@@ -629,10 +646,23 @@
         updateActiveFilters();
     }
 
+    function clearType() {
+        currentType = '';
+        // Redirect to main store page if on offline/online page
+        if (window.location.pathname.includes('/store/offline') || window.location.pathname.includes('/store/online')) {
+            window.location.href = BASE_URL + '/store';
+        } else {
+            currentPage = 1;
+            loadProducts();
+            updateActiveFilters();
+        }
+    }
+
     function resetFilters() {
         currentCategory = '';
         currentSearch = '';
         currentPrice = '';
+        currentType = '';
         currentSort = 'id-desc';
         currentPage = 1;
         
@@ -641,12 +671,25 @@
         document.querySelector('input[name="category"][value=""]').checked = true;
         document.querySelector('input[name="price"][value=""]').checked = true;
         
-        loadProducts();
-        updateActiveFilters();
+        // Redirect to main store page if on offline/online page
+        if (window.location.pathname.includes('/store/offline') || window.location.pathname.includes('/store/online')) {
+            window.location.href = BASE_URL + '/store';
+        } else {
+            loadProducts();
+            updateActiveFilters();
+        }
     }
 
     // Event listeners
     document.addEventListener('DOMContentLoaded', () => {
+        // Check URL path for type (offline/online)
+        const path = window.location.pathname;
+        if (path.includes('/store/offline')) {
+            currentType = 'offline';
+        } else if (path.includes('/store/online')) {
+            currentType = 'online';
+        }
+
         // Check URL params
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('category')) {
@@ -655,6 +698,9 @@
         if (urlParams.has('search')) {
             currentSearch = urlParams.get('search');
             document.getElementById('search-input').value = currentSearch;
+        }
+        if (urlParams.has('type')) {
+            currentType = urlParams.get('type');
         }
 
         loadCategories();
@@ -748,5 +794,121 @@
 
     // Reset filters button
     document.getElementById('reset-filters').addEventListener('click', resetFilters);
+
+    // Handler function to get data from button and call addToCart
+    function handleAddToCart(button, event) {
+        // Ngăn chặn mọi hành vi mặc định và propagation
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
+        const productId = parseInt(button.getAttribute('data-product-id'));
+        const productTitle = button.getAttribute('data-product-title') || '';
+        const productImage = button.getAttribute('data-product-image') || '';
+        const productPrice = button.getAttribute('data-product-price') || '';
+        
+        addToCart(productId, productTitle, productImage, productPrice);
+        
+        return false;
+    }
+
+    // Function to add product to cart
+    function addToCart(productId, productTitle, productImage, productPrice) {
+        // Lấy giỏ hàng hiện tại hoặc tạo mới
+        let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        
+        // Kiểm tra xem sản phẩm đã có trong giỏ chưa
+        const existingIndex = cart.findIndex(item => item.id === productId);
+        
+        if (existingIndex >= 0) {
+            // Nếu đã có thì tăng số lượng
+            cart[existingIndex].quantity += 1;
+        } else {
+            // Nếu chưa có thì thêm mới
+            cart.push({
+                id: productId,
+                title: productTitle,
+                image: productImage,
+                price: productPrice,
+                quantity: 1
+            });
+        }
+        
+        // Lưu vào localStorage
+        localStorage.setItem('cart', JSON.stringify(cart));
+        
+        // Cập nhật số lượng trên icon giỏ hàng
+        updateCartCount();
+        
+        // Hiển thị thông báo
+        showCartNotification(productTitle);
+    }
+
+    // Function to update cart count in header
+    function updateCartCount() {
+        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        const cartCount = document.getElementById('cart-count');
+        if (cartCount) {
+            const total = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
+            cartCount.textContent = total;
+            if (total > 0) {
+                cartCount.classList.remove('hidden');
+            } else {
+                cartCount.classList.add('hidden');
+            }
+        }
+    }
+
+    // Function to show notification when item added to cart
+    function showCartNotification(productTitle) {
+        // Tạo notification element
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-24 right-4 bg-white border border-game-border rounded-xl shadow-lg p-4 z-50 flex items-center gap-3 animate-slide-in';
+        notification.innerHTML = `
+            <div class="w-10 h-10 bg-game-green/10 rounded-full flex items-center justify-center">
+                <svg class="w-6 h-6 text-game-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+            </div>
+            <div>
+                <p class="font-semibold text-slate-800">Đã thêm vào giỏ hàng</p>
+                <p class="text-sm text-slate-600">${escapeHtml(productTitle)}</p>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Tự động ẩn sau 3 giây
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                notification.remove();
+            }, 300);
+        }, 3000);
+    }
+
+    // Update cart count on page load
+    updateCartCount();
 </script>
+@endpush
+
+@push('styles')
+<style>
+    @keyframes slide-in {
+        from {
+            opacity: 0;
+            transform: translateX(100%);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    .animate-slide-in {
+        animation: slide-in 0.3s ease-out;
+        transition: all 0.3s ease-out;
+    }
+</style>
 @endpush

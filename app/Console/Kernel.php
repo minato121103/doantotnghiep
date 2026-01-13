@@ -15,7 +15,18 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
+        // Train AI recommendation model mỗi ngày lúc 2h sáng
+        $schedule->command('recommendation:train')
+                 ->dailyAt('02:00')
+                 ->withoutOverlapping()
+                 ->runInBackground()
+                 ->appendOutputTo(storage_path('logs/recommendation-training.log'));
+
+        // Hoặc chạy mỗi 6 tiếng nếu muốn cập nhật thường xuyên hơn
+        // $schedule->command('recommendation:train')
+        //          ->everySixHours()
+        //          ->withoutOverlapping()
+        //          ->runInBackground();
     }
 
     /**

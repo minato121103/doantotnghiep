@@ -79,15 +79,5 @@ class User extends Authenticatable
         return $this->hasMany(Review::class, 'buyer_id');
     }
 
-    // Bài viết mà user này viết (nếu model Article tồn tại)
-    // public function articles()
-    // {
-    //     return $this->hasMany(Article::class, 'author_id');
-    // }
 
-    // Thông báo (nếu model Notification tồn tại)
-    // public function notifications()
-    // {
-    //     return $this->hasMany(Notification::class);
-    // }
 }

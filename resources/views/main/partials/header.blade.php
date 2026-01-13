@@ -119,7 +119,7 @@
                             <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                             </svg>
-                            <span class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full text-xs font-bold flex items-center justify-center text-white" id="cart-count">0</span>
+                            <span class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full text-xs font-bold flex items-center justify-center text-white hidden" id="cart-count">0</span>
                         </div>
                     </a>
                     
@@ -177,6 +177,12 @@
                     <a href="{{ url('/store') }}" class="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium">
                         Khám phá
                     </a>
+                    <a href="{{ url('/store/offline') }}" class="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium">
+                        Game Offline
+                    </a>
+                    <a href="{{ url('/store/online') }}" class="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium">
+                        Game Online
+                    </a>
                     <a href="{{ url('/news') }}" class="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium">
                         Tin tức
                     </a>
@@ -206,6 +212,8 @@
             <div class="flex flex-col space-y-2">
                 <a href="{{ url('/') }}" class="px-4 py-3 text-white hover:bg-slate-800 rounded-lg transition-colors">Trang chủ</a>
                 <a href="{{ url('/store') }}" class="px-4 py-3 text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">Khám phá</a>
+                <a href="{{ url('/store/offline') }}" class="px-4 py-3 text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">Game Offline</a>
+                <a href="{{ url('/store/online') }}" class="px-4 py-3 text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">Game Online</a>
                 <a href="{{ url('/categories') }}" class="px-4 py-3 text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">Danh mục</a>
             </div>
 
@@ -289,7 +297,137 @@
     });
 
     // Check auth status and update UI
-    function updateAuthUI() {
+    async function updateAuthUI() {
+        const token = localStorage.getItem('auth_token');
+        const baseUrl = '{{ url("/") }}';
+        
+        const guestMenu = document.getElementById('guest-menu');
+        const userMenu = document.getElementById('user-menu');
+        const mobileGuestMenu = document.getElementById('mobile-guest-menu');
+        const mobileUserMenu = document.getElementById('mobile-user-menu');
+
+        if (token) {
+            try {
+                // Fetch fresh user data from API
+                const response = await fetch(`${baseUrl}/api/user/profile`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    
+                    if (result.success && result.data) {
+                        const user = result.data;
+                        
+                        // Update localStorage with fresh data
+                        localStorage.setItem('user', JSON.stringify(user));
+                        
+                        if (guestMenu) guestMenu.style.display = 'none';
+                        if (userMenu) userMenu.style.display = 'flex';
+                        if (mobileGuestMenu) mobileGuestMenu.style.display = 'none';
+                        if (mobileUserMenu) mobileUserMenu.style.display = 'block';
+                        
+                        const defaultAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name) + '&background=6366f1&color=fff&size=64';
+                        
+                        const userName = document.getElementById('user-name');
+                        const userBalance = document.getElementById('user-balance');
+                        const dropdownEmail = document.getElementById('dropdown-email');
+                        
+                        // Parse balance from API response
+                        // API returns balance as decimal (number) from database
+                        // User model casts balance as 'decimal:2', so it should be a number
+                        let balance = 0;
+                        if (user.balance !== null && user.balance !== undefined) {
+                            // API should return balance as a number (not formatted string)
+                            // If it's a string, it might be a JSON serialization issue
+                            if (typeof user.balance === 'string') {
+                                // Remove any non-numeric characters except decimal point and minus
+                                const cleaned = user.balance.trim().replace(/[^\d.,-]/g, '');
+                                // If it contains dots, they might be thousands separators (remove them)
+                                // If it contains comma, it's decimal separator (replace with dot)
+                                if (cleaned.includes(',')) {
+                                    // Has comma: Vietnamese decimal format
+                                    balance = parseFloat(cleaned.replace(/\./g, '').replace(',', '.')) || 0;
+                                } else if (cleaned.includes('.')) {
+                                    // Has dots: check if it's decimal or thousands separator
+                                    const parts = cleaned.split('.');
+                                    if (parts.length === 2 && parts[1].length <= 2) {
+                                        // Decimal format: "123.45"
+                                        balance = parseFloat(cleaned) || 0;
+                                    } else {
+                                        // Thousands separator: "1.234.567"
+                                        balance = parseFloat(cleaned.replace(/\./g, '')) || 0;
+                                    }
+                                } else {
+                                    // Plain number string
+                                    balance = parseFloat(cleaned) || 0;
+                                }
+                            } else {
+                                // Already a number from API (decimal cast from database)
+                                balance = parseFloat(user.balance) || 0;
+                            }
+                        }
+                        
+                        // Log for debugging
+                        if (balance > 1000000000) {
+                            console.warn('Balance seems unusually large:', {
+                                raw: user.balance,
+                                type: typeof user.balance,
+                                parsed: balance,
+                                formatted: formatCurrency(balance)
+                            });
+                        }
+                        
+                        if (userName) userName.textContent = user.name;
+                        if (userBalance) userBalance.textContent = formatCurrency(balance);
+                        if (dropdownEmail) dropdownEmail.textContent = user.email;
+                        
+                        // Also update wallet balance if we're on the wallet page
+                        const walletBalance = document.getElementById('current-balance');
+                        if (walletBalance) {
+                            walletBalance.textContent = formatCurrency(balance);
+                        }
+                        
+                        const mobileUserAvatar = document.getElementById('mobile-user-avatar');
+                        const mobileUserName = document.getElementById('mobile-user-name');
+                        const mobileUserEmail = document.getElementById('mobile-user-email');
+                        const mobileUserBalance = document.getElementById('mobile-user-balance');
+                        
+                        if (mobileUserAvatar) mobileUserAvatar.src = user.avatar || defaultAvatar;
+                        if (mobileUserName) mobileUserName.textContent = user.name;
+                        if (mobileUserEmail) mobileUserEmail.textContent = user.email;
+                        if (mobileUserBalance) mobileUserBalance.textContent = formatCurrency(balance);
+                        
+                        const adminLink = document.getElementById('admin-dashboard-link');
+                        const mobileAdminLink = document.getElementById('mobile-admin-link');
+                        
+                        if (user.role === 'admin') {
+                            if (adminLink) { adminLink.classList.remove('hidden'); adminLink.classList.add('flex'); }
+                            if (mobileAdminLink) { mobileAdminLink.classList.remove('hidden'); mobileAdminLink.classList.add('flex'); }
+                        }
+                    } else {
+                        // API returned error, use localStorage as fallback
+                        updateAuthUIFromLocalStorage();
+                    }
+                } else {
+                    // API call failed, use localStorage as fallback
+                    updateAuthUIFromLocalStorage();
+                }
+            } catch (error) {
+                console.error('Error fetching user profile:', error);
+                // On error, try to use localStorage as fallback
+                updateAuthUIFromLocalStorage();
+            }
+        } else {
+            showGuestMenu();
+        }
+    }
+    
+    // Fallback: Update UI from localStorage (when API fails)
+    function updateAuthUIFromLocalStorage() {
         const token = localStorage.getItem('auth_token');
         const userStr = localStorage.getItem('user');
         
@@ -313,9 +451,26 @@
                 const userBalance = document.getElementById('user-balance');
                 const dropdownEmail = document.getElementById('dropdown-email');
                 
+                // Parse balance from localStorage (same logic as API)
+                let balance = 0;
+                if (user.balance !== null && user.balance !== undefined) {
+                    if (typeof user.balance === 'string') {
+                        const cleaned = user.balance.replace(/[^\d.,]/g, '');
+                        balance = parseFloat(cleaned.replace(/\./g, '').replace(',', '.')) || 0;
+                    } else {
+                        balance = parseFloat(user.balance) || 0;
+                    }
+                }
+                
                 if (userName) userName.textContent = user.name;
-                if (userBalance) userBalance.textContent = formatCurrency(user.balance || 0);
+                if (userBalance) userBalance.textContent = formatCurrency(balance);
                 if (dropdownEmail) dropdownEmail.textContent = user.email;
+                
+                // Also update wallet balance if we're on the wallet page
+                const walletBalance = document.getElementById('current-balance');
+                if (walletBalance) {
+                    walletBalance.textContent = formatCurrency(balance);
+                }
                 
                 const mobileUserAvatar = document.getElementById('mobile-user-avatar');
                 const mobileUserName = document.getElementById('mobile-user-name');
@@ -325,7 +480,7 @@
                 if (mobileUserAvatar) mobileUserAvatar.src = user.avatar || defaultAvatar;
                 if (mobileUserName) mobileUserName.textContent = user.name;
                 if (mobileUserEmail) mobileUserEmail.textContent = user.email;
-                if (mobileUserBalance) mobileUserBalance.textContent = formatCurrency(user.balance || 0);
+                if (mobileUserBalance) mobileUserBalance.textContent = formatCurrency(balance);
                 
                 const adminLink = document.getElementById('admin-dashboard-link');
                 const mobileAdminLink = document.getElementById('mobile-admin-link');
@@ -334,7 +489,6 @@
                     if (adminLink) { adminLink.classList.remove('hidden'); adminLink.classList.add('flex'); }
                     if (mobileAdminLink) { mobileAdminLink.classList.remove('hidden'); mobileAdminLink.classList.add('flex'); }
                 }
-                
             } catch (e) {
                 localStorage.removeItem('auth_token');
                 localStorage.removeItem('user');
@@ -358,8 +512,28 @@
     }
 
     function formatCurrency(amount) {
-        return new Intl.NumberFormat('vi-VN').format(amount) + ' đ';
+        if (!amount && amount !== 0) return '0 đ';
+        const numAmount = parseFloat(amount) || 0;
+        return new Intl.NumberFormat('vi-VN').format(numAmount) + ' đ';
     }
+    
+    // Listen for storage events to sync balance across tabs
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'user' && e.newValue) {
+            try {
+                console.log('Storage event received, updating UI...');
+                updateAuthUI();
+            } catch (error) {
+                console.error('Error parsing user from storage event:', error);
+            }
+        }
+    });
+    
+    // Also listen for custom events (for same-tab updates)
+    window.addEventListener('userBalanceUpdated', function() {
+        console.log('User balance updated event received');
+        updateAuthUI();
+    });
 
     async function handleLogout() {
         const token = localStorage.getItem('auth_token');
@@ -486,6 +660,11 @@
         if (cartCount) {
             const total = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
             cartCount.textContent = total;
+            if (total > 0) {
+                cartCount.classList.remove('hidden');
+            } else {
+                cartCount.classList.add('hidden');
+            }
         }
     }
 

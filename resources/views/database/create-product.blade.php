@@ -82,20 +82,6 @@
                         <p id="error-view_count" class="text-red-500 text-sm mt-1 hidden"></p>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Rating Count</label>
-                        <input type="number" id="rating_count" name="rating_count" min="0" value="0"
-                               class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base">
-                        <p id="error-rating_count" class="text-red-500 text-sm mt-1 hidden"></p>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Average Rating</label>
-                        <input type="number" id="average_rating" name="average_rating" 
-                               step="0.01" min="0" max="5" value="0"
-                               class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base">
-                        <p id="error-average_rating" class="text-red-500 text-sm mt-1 hidden"></p>
-                    </div>
                 </div>
             </div>
 
@@ -162,10 +148,8 @@
                 if (key === 'tags' && value) {
                     const tagsArray = value.split(',').map(tag => tag.trim()).filter(tag => tag);
                     data[key] = tagsArray;
-                } else if (key === 'view_count' || key === 'rating_count') {
+                } else if (key === 'view_count') {
                     data[key] = value ? parseInt(value) : 0;
-                } else if (key === 'average_rating') {
-                    data[key] = value ? parseFloat(value) : 0;
                 } else {
                     data[key] = value || null;
                 }

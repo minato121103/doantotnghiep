@@ -145,8 +145,6 @@ $productData = [
     'category' => 'Electronics',
     'tags' => ['test', 'electronics', 'sample'],
     'view_count' => 0,
-    'rating_count' => 0,
-    'average_rating' => 4.5
 ];
 $response = test('POST /api/products', $apiUrl, 'POST', $productData, 201);
 if ($response && isset($response['data']['id'])) {
@@ -165,8 +163,7 @@ if ($createdProductId) {
     echo "{$yellow}=== Test 8: Update Product ==={$reset}\n";
     $updateData = [
         'title' => 'Updated Test Product',
-        'price' => '149.99',
-        'average_rating' => 4.8
+        'price' => '149.99'
     ];
     $response = test('PUT /api/products/{id}', $apiUrl . '/' . $createdProductId, 'PUT', $updateData, 200);
     echo "\n";

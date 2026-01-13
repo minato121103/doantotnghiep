@@ -23,7 +23,7 @@ class OrderController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Order::with(['buyer', 'game', 'steamAccount']);
+        $query = Order::with(['buyer', 'game', 'steamAccount', 'items']);
 
         // If not admin, only show user's own orders
         $user = $request->user();
@@ -73,9 +73,30 @@ class OrderController extends Controller
 
         $orders = $query->paginate($perPage);
 
+        // Decrypt credentials for processing and completed orders
+        $ordersData = $orders->items();
+        foreach ($ordersData as $order) {
+            if (in_array($order->status, ['processing', 'completed']) && $order->items) {
+                foreach ($order->items as $item) {
+                    if ($item->steam_credentials) {
+                        try {
+                            $item->steam_credentials = [
+                                'username' => Crypt::decryptString($item->steam_credentials['username']),
+                                'password' => Crypt::decryptString($item->steam_credentials['password']),
+                                'email' => $item->steam_credentials['email'] ? Crypt::decryptString($item->steam_credentials['email']) : null,
+                                'email_password' => $item->steam_credentials['email_password'] ? Crypt::decryptString($item->steam_credentials['email_password']) : null,
+                            ];
+                        } catch (\Exception $e) {
+                            // Handle decryption error - keep encrypted
+                        }
+                    }
+                }
+            }
+        }
+
         return response()->json([
             'success' => true,
-            'data' => $orders->items(),
+            'data' => $ordersData,
             'pagination' => [
                 'current_page' => $orders->currentPage(),
                 'per_page' => $orders->perPage(),
@@ -85,6 +106,275 @@ class OrderController extends Controller
                 'to' => $orders->lastItem(),
             ]
         ]);
+    }
+
+    /**
+     * Create multiple orders from cart (batch checkout).
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function batchStore(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated'
+            ], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'items' => 'required|array|min:1',
+            'items.*.product_simple_id' => 'required|exists:product_simple,id',
+            'items.*.quantity' => 'required|integer|min:1|max:10',
+            'payment_method' => 'required|in:balance,banking,momo,zalopay',
+            'notes' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $items = $request->items;
+        $paymentMethod = $request->payment_method;
+        $notes = $request->notes;
+
+        // Validate all items and calculate total before processing
+        $totalAmount = 0;
+        $validatedItems = [];
+        $errors = [];
+
+        foreach ($items as $index => $item) {
+            $game = ProductSimple::find($item['product_simple_id']);
+            if (!$game) {
+                $errors[] = "Item {$index}: Game not found";
+                continue;
+            }
+
+            // Parse price
+            $priceStr = $game->price ?? '';
+            $amount = $this->parsePrice($priceStr);
+            
+            if ($amount <= 0) {
+                \Log::warning('Failed to parse price', [
+                    'game_id' => $item['product_simple_id'],
+                    'price_string' => $priceStr,
+                    'parsed_amount' => $amount
+                ]);
+                $errors[] = "Item {$index}: Invalid price (price: " . ($priceStr ?: 'empty') . ")";
+                continue;
+            }
+
+            // Check steam account availability
+            $availableCount = SteamAccount::hasGame($item['product_simple_id'])->count();
+            if ($availableCount < $item['quantity']) {
+                $errors[] = "Item {$index}: Only {$availableCount} account(s) available, requested {$item['quantity']}";
+                continue;
+            }
+
+            $validatedItems[] = [
+                'game' => $game,
+                'quantity' => $item['quantity'],
+                'amount' => $amount,
+                'product_simple_id' => $item['product_simple_id'],
+            ];
+
+            $totalAmount += $amount * $item['quantity'];
+        }
+
+        if (!empty($errors)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $errors
+            ], 400);
+        }
+
+        // Check balance if payment method is balance
+        if ($paymentMethod === 'balance') {
+            if ($user->balance < $totalAmount) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Insufficient balance',
+                    'required' => $totalAmount,
+                    'available' => $user->balance
+                ], 400);
+            }
+        }
+
+        // Process all orders in a single transaction
+        DB::beginTransaction();
+        try {
+            $createdOrders = [];
+            $balanceBefore = $user->balance;
+            $balanceAfter = $balanceBefore;
+
+            foreach ($validatedItems as $item) {
+                for ($i = 0; $i < $item['quantity']; $i++) {
+                    // Find available steam account
+                    $steamAccount = SteamAccount::hasGame($item['product_simple_id'])->first();
+                    
+                    if (!$steamAccount) {
+                        throw new \Exception("No available steam account for game ID: {$item['product_simple_id']}");
+                    }
+
+                    // Create order
+                    $order = Order::create([
+                        'order_code' => Order::generateOrderCode(),
+                        'buyer_id' => $user->id,
+                        'steam_account_id' => $steamAccount->id,
+                        'product_simple_id' => $item['product_simple_id'],
+                        'amount' => $item['amount'],
+                        'fee' => 0,
+                        'payment_method' => $paymentMethod,
+                        'status' => 'pending',
+                        'notes' => $notes,
+                    ]);
+
+                    // Create order item with encrypted credentials
+                    $credentials = [
+                        'username' => Crypt::encryptString($steamAccount->username),
+                        'password' => Crypt::encryptString($steamAccount->password),
+                        'email' => $steamAccount->email ? Crypt::encryptString($steamAccount->email) : null,
+                        'email_password' => $steamAccount->email_password ? Crypt::encryptString($steamAccount->email_password) : null,
+                    ];
+
+                    OrderItem::create([
+                        'order_id' => $order->id,
+                        'steam_account_id' => $steamAccount->id,
+                        'product_simple_id' => $item['product_simple_id'],
+                        'steam_credentials' => $credentials,
+                        'price' => $item['amount'],
+                    ]);
+
+                    // Mark steam account as pending
+                    $steamAccount->update(['status' => 'pending']);
+
+                    $createdOrders[] = $order;
+                }
+            }
+
+            // Process payment if balance
+            if ($paymentMethod === 'balance') {
+                $balanceAfter = $balanceBefore - $totalAmount;
+                
+                $user->update([
+                    'balance' => $balanceAfter,
+                    'total_orders' => $user->total_orders + count($createdOrders),
+                    'total_spent' => $user->total_spent + $totalAmount,
+                ]);
+
+                // Create transaction
+                Transaction::create([
+                    'user_id' => $user->id,
+                    'transaction_code' => Transaction::generateTransactionCode('PUR'),
+                    'type' => 'purchase',
+                    'amount' => -$totalAmount,
+                    'balance_before' => $balanceBefore,
+                    'balance_after' => $balanceAfter,
+                    'status' => 'completed',
+                    'payment_method' => 'balance',
+                    'description' => "Batch purchase: " . count($createdOrders) . " order(s)",
+                ]);
+
+                // Auto update orders to processing
+                Order::whereIn('id', array_column($createdOrders, 'id'))
+                    ->update(['status' => 'processing']);
+            }
+
+            DB::commit();
+
+            // Load relationships
+            foreach ($createdOrders as $order) {
+                $order->load(['buyer', 'game', 'items']);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Orders created successfully',
+                'data' => [
+                    'orders' => $createdOrders,
+                    'total_amount' => $totalAmount,
+                    'balance_before' => $balanceBefore,
+                    'balance_after' => $balanceAfter,
+                    'count' => count($createdOrders)
+                ]
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Batch checkout error: ' . $e->getMessage(), [
+                'user_id' => $user->id,
+                'items' => $items,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create orders',
+                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred'
+            ], 500);
+        }
+    }
+
+    /**
+     * Parse price from string to float.
+     * Handles formats like "1.499.000 ₫ ... 65.000 ₫" or "800.000đ"
+     *
+     * @param string $priceStr
+     * @return float
+     */
+    private function parsePrice($priceStr)
+    {
+        if (!$priceStr || trim($priceStr) === '') {
+            return 0;
+        }
+        
+        // First, try to extract prices with currency symbol (đ or ₫)
+        // Pattern: numbers with dots/commas followed by đ or ₫
+        if (preg_match_all('/[\d.,]+\s*[₫đ]/ui', $priceStr, $matches)) {
+            if (!empty($matches[0])) {
+                // Get the last price (current price)
+                $lastPrice = trim(end($matches[0]));
+                // Remove currency symbol and whitespace, then remove dots and commas
+                $cleaned = preg_replace('/[₫đ\s]/ui', '', $lastPrice);
+                $cleaned = str_replace(['.', ','], '', $cleaned);
+                $amount = (float) $cleaned;
+                if ($amount > 0) {
+                    return $amount;
+                }
+            }
+        }
+        
+        // Fallback: extract all numbers and get the last one
+        if (preg_match_all('/[\d.,]+/', $priceStr, $matches)) {
+            if (!empty($matches[0])) {
+                $lastNumber = end($matches[0]);
+                // Remove dots (thousands separator) and commas (decimal separator)
+                // Vietnamese format: dots for thousands, comma for decimal
+                $cleaned = str_replace(['.', ','], '', $lastNumber);
+                $amount = (float) $cleaned;
+                if ($amount > 0) {
+                    return $amount;
+                }
+            }
+        }
+        
+        // Last resort: try to extract any number from the string
+        if (preg_match('/(\d+(?:[.,]\d+)*)/', $priceStr, $match)) {
+            $cleaned = str_replace(['.', ','], '', $match[1]);
+            $amount = (float) $cleaned;
+            if ($amount > 0) {
+                return $amount;
+            }
+        }
+        
+        return 0;
     }
 
     /**
@@ -137,8 +427,16 @@ class OrderController extends Controller
             ], 404);
         }
 
-        // Calculate amount (using game price)
-        $amount = floatval($game->price);
+        // Calculate amount using parsePrice method
+        $amount = $this->parsePrice($game->price);
+        
+        if ($amount <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid game price'
+            ], 400);
+        }
+        
         $fee = 0; // Can be calculated based on payment method
 
         // Check balance if payment method is balance
@@ -170,8 +468,8 @@ class OrderController extends Controller
             $credentials = [
                 'username' => Crypt::encryptString($steamAccount->username),
                 'password' => Crypt::encryptString($steamAccount->password),
-                'email' => Crypt::encryptString($steamAccount->email),
-                'email_password' => Crypt::encryptString($steamAccount->email_password),
+                'email' => $steamAccount->email ? Crypt::encryptString($steamAccount->email) : null,
+                'email_password' => $steamAccount->email_password ? Crypt::encryptString($steamAccount->email_password) : null,
             ];
 
             OrderItem::create([
@@ -262,19 +560,20 @@ class OrderController extends Controller
             ], 403);
         }
 
-        // Decrypt credentials in order items if order is completed
-        if ($order->status === 'completed' && $order->items) {
+        // Decrypt credentials in order items if order is processing or completed
+        if (in_array($order->status, ['processing', 'completed']) && $order->items) {
             foreach ($order->items as $item) {
                 if ($item->steam_credentials) {
                     try {
                         $item->steam_credentials = [
                             'username' => Crypt::decryptString($item->steam_credentials['username']),
                             'password' => Crypt::decryptString($item->steam_credentials['password']),
-                            'email' => Crypt::decryptString($item->steam_credentials['email']),
-                            'email_password' => Crypt::decryptString($item->steam_credentials['email_password']),
+                            'email' => $item->steam_credentials['email'] ? Crypt::decryptString($item->steam_credentials['email']) : null,
+                            'email_password' => $item->steam_credentials['email_password'] ? Crypt::decryptString($item->steam_credentials['email_password']) : null,
                         ];
                     } catch (\Exception $e) {
-                        // Handle decryption error
+                        // Handle decryption error - log for debugging
+                        \Log::error('Failed to decrypt credentials for order item: ' . $item->id, ['error' => $e->getMessage()]);
                     }
                 }
             }

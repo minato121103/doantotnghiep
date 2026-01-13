@@ -22,17 +22,14 @@ class ProductSimple extends Model
         'short_description',
         'detail_description',
         'category',
+        'type',
         'tags',
         'view_count',
-        'rating_count',
-        'average_rating',
     ];
     #chuyển đổi kiểu dữ liệu
     protected $casts = [
         'tags' => 'array',
         'view_count' => 'integer',
-        'rating_count' => 'integer',
-        'average_rating' => 'decimal:2',
     ];
 
     public function getRouteKeyName()
