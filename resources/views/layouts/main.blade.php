@@ -10,7 +10,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
     
     <!-- Google Material Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined|Material+Icons+Round" rel="stylesheet">
@@ -34,9 +34,9 @@
                         'game-orange': '#f97316',
                     },
                     fontFamily: {
-                        'display': ['Orbitron', 'sans-serif'],
-                        'heading': ['Rajdhani', 'sans-serif'],
-                        'body': ['Inter', 'sans-serif'],
+                        'display': ['Be Vietnam Pro', 'sans-serif'],
+                        'heading': ['Be Vietnam Pro', 'sans-serif'],
+                        'body': ['Be Vietnam Pro', 'sans-serif'],
                     },
                 }
             }
@@ -45,7 +45,7 @@
     
     <style>
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Be Vietnam Pro', sans-serif;
             background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
         }
         

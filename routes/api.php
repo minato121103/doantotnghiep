@@ -12,6 +12,7 @@ use App\Http\Controllers\WalletController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProductDiscussionController;
 use App\Http\Controllers\RecommendationController;
+use App\Http\Controllers\NewsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -118,9 +119,8 @@ Route::middleware('auth:sanctum')->prefix('orders')->group(function () {
     // Get a single order by ID
     Route::get('/{id}', [OrderController::class, 'show']);
     
-    // Update order status (Admin only)
-    Route::put('/{id}/status', [OrderController::class, 'updateStatus']);
-    Route::patch('/{id}/status', [OrderController::class, 'updateStatus']);
+    // Delete an order (Admin only)
+    Route::delete('/{id}', [OrderController::class, 'destroy']);
 });
 
 // Review API Routes
@@ -152,6 +152,9 @@ Route::middleware('auth:sanctum')->prefix('reviews')->group(function () {
 
 // Product Discussion API Routes
 Route::prefix('discussions')->group(function () {
+    // Get all discussions (public - for admin management)
+    Route::get('/', [ProductDiscussionController::class, 'all']);
+    
     // Get discussions by product (public)
     Route::get('/product/{productId}', [ProductDiscussionController::class, 'index']);
     
@@ -166,6 +169,9 @@ Route::prefix('discussions')->group(function () {
 Route::middleware('auth:sanctum')->prefix('discussions')->group(function () {
     // Create a new discussion (auth required)
     Route::post('/', [ProductDiscussionController::class, 'store']);
+    
+    // Approve discussion (admin only)
+    Route::post('/{id}/approve', [ProductDiscussionController::class, 'approve']);
     
     // Delete own discussion (auth required)
     Route::delete('/{id}', [ProductDiscussionController::class, 'destroy']);
@@ -223,4 +229,26 @@ Route::middleware('auth:sanctum')->prefix('recommendations')->group(function () 
     
     // Record user interaction (for improving recommendations)
     Route::post('/interaction', [RecommendationController::class, 'recordInteraction']);
+});
+
+// News API Routes
+Route::prefix('news')->group(function () {
+    // Get all news (public)
+    Route::get('/', [NewsController::class, 'index']);
+    
+    // Get a single news by ID (public)
+    Route::get('/{id}', [NewsController::class, 'show']);
+});
+
+// Admin News Routes (should add admin middleware)
+Route::prefix('news')->group(function () {
+    // Create a new news
+    Route::post('/', [NewsController::class, 'store']);
+    
+    // Update a news
+    Route::put('/{id}', [NewsController::class, 'update']);
+    Route::patch('/{id}', [NewsController::class, 'update']);
+    
+    // Delete a news
+    Route::delete('/{id}', [NewsController::class, 'destroy']);
 });

@@ -10,6 +10,122 @@ use Illuminate\Support\Facades\Validator;
 class ProductDiscussionController extends Controller
 {
     /**
+     * Get all discussions (for admin management).
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function all(Request $request)
+    {
+        $query = ProductDiscussion::with(['user', 'product']);
+
+        // Search filter
+        $search = $request->get('search');
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('content', 'like', "%{$search}%")
+                  ->orWhere('author_name', 'like', "%{$search}%")
+                  ->orWhereHas('user', function($uq) use ($search) {
+                      $uq->where('name', 'like', "%{$search}%")
+                         ->orWhere('email', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Status filter
+        $status = $request->get('status');
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        // Type filter (parent = comment gốc, reply = phản hồi)
+        $type = $request->get('type');
+        if ($type === 'parent') {
+            $query->whereNull('parent_id');
+        } elseif ($type === 'reply') {
+            $query->whereNotNull('parent_id');
+        }
+
+        // Product filter
+        $productId = $request->get('product_id');
+        if ($productId) {
+            $query->where('product_simple_id', $productId);
+        }
+
+        // Sort
+        $sortBy = $request->get('sort_by', 'id');
+        $sortOrder = $request->get('sort_order', 'desc');
+        $allowedSortFields = ['id', 'created_at', 'like_count', 'status'];
+        
+        if (in_array($sortBy, $allowedSortFields)) {
+            $query->orderBy($sortBy, $sortOrder);
+        }
+
+        // Pagination
+        $perPage = $request->get('per_page', 15);
+        $perPage = min(max(1, $perPage), 10000);
+
+        $discussions = $query->paginate($perPage);
+
+        // Format data
+        $formattedData = $discussions->map(function($discussion) {
+            // Get parent info if exists
+            $parentInfo = null;
+            if ($discussion->parent_id) {
+                $parent = ProductDiscussion::with('user')->find($discussion->parent_id);
+                if ($parent) {
+                    $parentInfo = [
+                        'id' => $parent->id,
+                        'display_name' => $parent->display_name,
+                        'content' => \Illuminate\Support\Str::limit($parent->content, 50),
+                    ];
+                }
+            }
+            
+            // Count replies
+            $repliesCount = ProductDiscussion::where('parent_id', $discussion->id)->count();
+            
+            return [
+                'id' => $discussion->id,
+                'product_simple_id' => $discussion->product_simple_id,
+                'product' => $discussion->product ? [
+                    'id' => $discussion->product->id,
+                    'title' => $discussion->product->title,
+                ] : null,
+                'user_id' => $discussion->user_id,
+                'user' => $discussion->user ? [
+                    'id' => $discussion->user->id,
+                    'name' => $discussion->user->name,
+                    'email' => $discussion->user->email,
+                ] : null,
+                'author_name' => $discussion->author_name,
+                'display_name' => $discussion->display_name,
+                'content' => $discussion->content,
+                'parent_id' => $discussion->parent_id,
+                'parent' => $parentInfo,
+                'replies_count' => $repliesCount,
+                'like_count' => $discussion->like_count,
+                'status' => $discussion->status,
+                'created_at' => $discussion->created_at,
+                'updated_at' => $discussion->updated_at,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $formattedData,
+            'pagination' => [
+                'current_page' => $discussions->currentPage(),
+                'per_page' => $discussions->perPage(),
+                'total' => $discussions->total(),
+                'last_page' => $discussions->lastPage(),
+                'from' => $discussions->firstItem(),
+                'to' => $discussions->lastItem(),
+            ]
+        ]);
+    }
+
+    /**
      * Display a listing of discussions for a product.
      *
      * @param Request $request
@@ -163,6 +279,42 @@ class ProductDiscussionController extends Controller
 
         return response()->json([
             'success' => true,
+            'data' => $discussion
+        ]);
+    }
+
+    /**
+     * Approve a pending discussion (admin only).
+     *
+     * @param Request $request
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function approve(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Chỉ admin mới có thể duyệt bình luận'
+            ], 403);
+        }
+
+        $discussion = ProductDiscussion::find($id);
+
+        if (!$discussion) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bình luận không tồn tại'
+            ], 404);
+        }
+
+        $discussion->update(['status' => 'approved']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Bình luận đã được duyệt',
             'data' => $discussion
         ]);
     }

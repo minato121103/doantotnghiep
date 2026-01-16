@@ -67,11 +67,18 @@ class ProductSimpleController extends Controller
         $perPage = $request->get('per_page', 15);
         $perPage = min(max(1, $perPage), 100);
 
-        $products = $query->paginate($perPage);
+        $products = $query->withSum('steamAccounts', 'count')->paginate($perPage);
+
+        // Map thêm available_accounts từ tổng count của steam accounts
+        $productsData = collect($products->items())->map(function ($product) {
+            $productArray = $product->toArray();
+            $productArray['available_accounts'] = $product->steam_accounts_sum_count ?? 0;
+            return $productArray;
+        });
 
         return response()->json([
             'success' => true,
-            'data' => $products->items(),
+            'data' => $productsData,
             'pagination' => [
                 'current_page' => $products->currentPage(),
                 'per_page' => $products->perPage(),

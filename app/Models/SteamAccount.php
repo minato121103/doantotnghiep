@@ -16,6 +16,7 @@ class SteamAccount extends Model
         'password',
         'email',
         'email_password',
+        'count',
         'status',
         'sold_at',
     ];
@@ -45,13 +46,29 @@ class SteamAccount extends Model
     }
 
     /**
-     * Scope để tìm tài khoản có game cụ thể
+     * Scope để tìm tài khoản có game cụ thể và còn count
      */
     public function scopeHasGame($query, $productSimpleId)
     {
         return $query->whereHas('games', function($q) use ($productSimpleId) {
             $q->where('product_simple.id', $productSimpleId);
-        })->where('status', 'available');
+        })->where('status', 'available')->where('count', '>', 0);
+    }
+
+    /**
+     * Check if account is offline (no email info)
+     */
+    public function isOffline()
+    {
+        return empty($this->attributes['email']) || empty($this->attributes['email_password']);
+    }
+
+    /**
+     * Get initial count based on account type
+     */
+    public static function getInitialCount($email, $emailPassword)
+    {
+        return (empty($email) || empty($emailPassword)) ? 10 : 1;
     }
 
     /**

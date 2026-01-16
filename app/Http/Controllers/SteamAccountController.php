@@ -50,21 +50,35 @@ class SteamAccountController extends Controller
             $query->orderBy($sortBy, $sortOrder);
         }
 
-        // Pagination
+        // Pagination (allow up to 10000 for stats)
         $perPage = $request->get('per_page', 15);
-        $perPage = min(max(1, $perPage), 100);
+        $perPage = min(max(1, $perPage), 10000);
 
         $accounts = $query->paginate($perPage);
 
-        // Hide sensitive data in listing
-        $accounts->getCollection()->transform(function ($account) {
-            $account->makeHidden(['password', 'email_password']);
-            return $account;
+        // Transform data and add is_offline flag
+        $accountsData = $accounts->getCollection()->map(function ($account) {
+            $isOffline = empty($account->getAttributes()['email']) || empty($account->getAttributes()['email_password']);
+            
+            return [
+                'id' => $account->id,
+                'username' => $account->username,
+                'email' => $account->getAttributes()['email'] ? '***' : null, // Hide actual email but indicate if exists
+                'has_email' => !empty($account->getAttributes()['email']),
+                'has_email_password' => !empty($account->getAttributes()['email_password']),
+                'is_offline' => $isOffline,
+                'count' => $account->count,
+                'status' => $account->status,
+                'sold_at' => $account->sold_at,
+                'created_at' => $account->created_at,
+                'updated_at' => $account->updated_at,
+                'games' => $account->games,
+            ];
         });
 
         return response()->json([
             'success' => true,
-            'data' => $accounts->items(),
+            'data' => $accountsData,
             'pagination' => [
                 'current_page' => $accounts->currentPage(),
                 'per_page' => $accounts->perPage(),
@@ -87,8 +101,8 @@ class SteamAccountController extends Controller
         $validator = Validator::make($request->all(), [
             'username' => 'required|string|max:100',
             'password' => 'required|string',
-            'email' => 'required|email|max:255',
-            'email_password' => 'required|string',
+            'email' => 'nullable|email|max:255',
+            'email_password' => 'nullable|string',
             'status' => 'nullable|in:available,sold,pending,suspended',
             'games' => 'required|array|min:1',
             'games.*' => 'required|exists:product_simple,id',
@@ -106,11 +120,15 @@ class SteamAccountController extends Controller
 
         DB::beginTransaction();
         try {
+            // Calculate count: 10 for offline (no email), 1 for online (has email)
+            $count = SteamAccount::getInitialCount($request->email, $request->email_password);
+            
             $account = SteamAccount::create([
                 'username' => $request->username,
                 'password' => $request->password, // Will be encrypted by model accessor
                 'email' => $request->email,
                 'email_password' => $request->email_password, // Will be encrypted by model accessor
+                'count' => $count,
                 'status' => $request->status ?? 'available',
             ]);
 
@@ -191,8 +209,9 @@ class SteamAccountController extends Controller
         $validator = Validator::make($request->all(), [
             'username' => 'sometimes|required|string|max:100',
             'password' => 'sometimes|required|string',
-            'email' => 'sometimes|required|email|max:255',
-            'email_password' => 'sometimes|required|string',
+            'email' => 'nullable|email|max:255',
+            'email_password' => 'nullable|string',
+            'count' => 'nullable|integer|min:0',
             'status' => 'nullable|in:available,sold,pending,suspended',
             'games' => 'sometimes|array|min:1',
             'games.*' => 'required|exists:product_simple,id',
@@ -216,6 +235,7 @@ class SteamAccountController extends Controller
             if ($request->has('password')) $updateData['password'] = $request->password;
             if ($request->has('email')) $updateData['email'] = $request->email;
             if ($request->has('email_password')) $updateData['email_password'] = $request->email_password;
+            if ($request->has('count')) $updateData['count'] = $request->count;
             if ($request->has('status')) $updateData['status'] = $request->status;
 
             if (!empty($updateData)) {

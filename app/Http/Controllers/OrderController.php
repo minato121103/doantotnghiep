@@ -73,10 +73,10 @@ class OrderController extends Controller
 
         $orders = $query->paginate($perPage);
 
-        // Decrypt credentials for processing and completed orders
+        // Decrypt credentials for all orders (all orders are completed)
         $ordersData = $orders->items();
         foreach ($ordersData as $order) {
-            if (in_array($order->status, ['processing', 'completed']) && $order->items) {
+            if ($order->items) {
                 foreach ($order->items as $item) {
                     if ($item->steam_credentials) {
                         try {
@@ -224,7 +224,7 @@ class OrderController extends Controller
                         throw new \Exception("No available steam account for game ID: {$item['product_simple_id']}");
                     }
 
-                    // Create order
+                    // Create order with completed status
                     $order = Order::create([
                         'order_code' => Order::generateOrderCode(),
                         'buyer_id' => $user->id,
@@ -233,7 +233,8 @@ class OrderController extends Controller
                         'amount' => $item['amount'],
                         'fee' => 0,
                         'payment_method' => $paymentMethod,
-                        'status' => 'pending',
+                        'status' => 'completed',
+                        'completed_at' => now(),
                         'notes' => $notes,
                     ]);
 
@@ -253,8 +254,16 @@ class OrderController extends Controller
                         'price' => $item['amount'],
                     ]);
 
-                    // Mark steam account as pending
-                    $steamAccount->update(['status' => 'pending']);
+                    // Decrease count and mark as sold if count reaches 0
+                    $newCount = max(0, $steamAccount->count - 1);
+                    $updateData = ['count' => $newCount];
+                    
+                    if ($newCount === 0) {
+                        $updateData['status'] = 'sold';
+                        $updateData['sold_at'] = now();
+                    }
+                    
+                    $steamAccount->update($updateData);
 
                     $createdOrders[] = $order;
                 }
@@ -282,10 +291,6 @@ class OrderController extends Controller
                     'payment_method' => 'balance',
                     'description' => "Batch purchase: " . count($createdOrders) . " order(s)",
                 ]);
-
-                // Auto update orders to processing
-                Order::whereIn('id', array_column($createdOrders, 'id'))
-                    ->update(['status' => 'processing']);
             }
 
             DB::commit();
@@ -451,7 +456,7 @@ class OrderController extends Controller
 
         DB::beginTransaction();
         try {
-            // Create order
+            // Create order with completed status
             $order = Order::create([
                 'order_code' => Order::generateOrderCode(),
                 'buyer_id' => $user->id,
@@ -460,7 +465,8 @@ class OrderController extends Controller
                 'amount' => $amount,
                 'fee' => $fee,
                 'payment_method' => $request->payment_method,
-                'status' => 'pending',
+                'status' => 'completed',
+                'completed_at' => now(),
                 'notes' => $request->notes,
             ]);
 
@@ -504,15 +510,18 @@ class OrderController extends Controller
                     'description' => "Purchase order: {$order->order_code}",
                     'order_id' => $order->id,
                 ]);
-
-                // Auto complete order if paid by balance
-                $order->update([
-                    'status' => 'processing',
-                ]);
             }
 
-            // Mark steam account as pending
-            $steamAccount->update(['status' => 'pending']);
+            // Decrease count and mark as sold if count reaches 0
+            $newCount = max(0, $steamAccount->count - 1);
+            $updateData = ['count' => $newCount];
+            
+            if ($newCount === 0) {
+                $updateData['status'] = 'sold';
+                $updateData['sold_at'] = now();
+            }
+            
+            $steamAccount->update($updateData);
 
             DB::commit();
 
@@ -560,8 +569,8 @@ class OrderController extends Controller
             ], 403);
         }
 
-        // Decrypt credentials in order items if order is processing or completed
-        if (in_array($order->status, ['processing', 'completed']) && $order->items) {
+        // Decrypt credentials in order items (all orders are completed)
+        if ($order->items) {
             foreach ($order->items as $item) {
                 if ($item->steam_credentials) {
                     try {
@@ -678,6 +687,57 @@ class OrderController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update order status',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete an order (Admin only).
+     *
+     * @param Request $request
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function destroy(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user || $user->role !== 'admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized. Admin access required.'
+            ], 403);
+        }
+
+        $order = Order::find($id);
+
+        if (!$order) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Order not found'
+            ], 404);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Delete order items first
+            $order->items()->delete();
+            
+            // Delete the order
+            $order->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Order deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete order',
                 'error' => $e->getMessage()
             ], 500);
         }

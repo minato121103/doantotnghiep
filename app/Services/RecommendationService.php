@@ -211,12 +211,18 @@ class RecommendationService
             arsort($recommendedProducts);
             $topRecommendations = array_slice($recommendedProducts, 0, 20, true);
 
+            // Normalize scores: chia cho max score để có range 0-1 nhưng vẫn giữ sự khác biệt
+            $maxScore = !empty($topRecommendations) ? max($topRecommendations) : 1;
+            
             $rank = 1;
             foreach ($topRecommendations as $productId => $score) {
+                // Normalize: score / maxScore để giữ tỷ lệ tương đối
+                $normalizedScore = $maxScore > 0 ? round($score / $maxScore, 4) : 0;
+                
                 $recommendations[] = [
                     'user_id' => $userId,
                     'product_id' => $productId,
-                    'score' => min(1, $score / 10), // Normalize to 0-1
+                    'score' => $normalizedScore,
                     'algorithm' => 'hybrid',
                     'rank' => $rank++,
                     'created_at' => now(),
@@ -299,6 +305,7 @@ class RecommendationService
 
     /**
      * Get recommended products from similar users
+     * Uses weighted average: Σ(similarity × score) / Σ(similarity)
      */
     private function getRecommendedProducts(
         int $userId, 
@@ -308,6 +315,7 @@ class RecommendationService
         array $allProducts
     ): array {
         $scores = [];
+        $totalSimilarity = []; // Tổng similarity cho mỗi product
 
         foreach ($similarUsers as $similarUserId => $similarity) {
             $similarUserProducts = $allUserInteractions[$similarUserId] ?? [];
@@ -318,9 +326,20 @@ class RecommendationService
                 
                 if (!isset($scores[$productId])) {
                     $scores[$productId] = 0;
+                    $totalSimilarity[$productId] = 0;
                 }
                 
+                // Cộng dồn: similarity × score
                 $scores[$productId] += $similarity * $score;
+                // Cộng dồn tổng similarity
+                $totalSimilarity[$productId] += $similarity;
+            }
+        }
+
+        // Chia cho tổng similarity để có điểm trung bình có trọng số
+        foreach ($scores as $productId => $score) {
+            if ($totalSimilarity[$productId] > 0) {
+                $scores[$productId] = $score / $totalSimilarity[$productId];
             }
         }
 

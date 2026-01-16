@@ -93,5 +93,21 @@ class MainController extends Controller
     {
         return view('main.auth.payment-callback');
     }
+
+    /**
+     * Show news page
+     */
+    public function news()
+    {
+        return view('main.news');
+    }
+
+    /**
+     * Show news detail page
+     */
+    public function newsDetail($id)
+    {
+        return view('main.news-detail', ['newsId' => $id]);
+    }
 }
 

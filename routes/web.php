@@ -7,6 +7,7 @@ use App\Http\Controllers\MainController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\WalletController;
 use App\Http\Controllers\RecommendationController;
+use App\Http\Controllers\NewsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -31,6 +32,8 @@ Route::get('/orders', [MainController::class, 'orders'])->name('orders');
 Route::get('/wallet', [MainController::class, 'wallet'])->name('wallet');
 Route::get('/wallet/vnpay/callback', [WalletController::class, 'callback'])->name('wallet.vnpay.callback');
 Route::get('/wallet/payment/callback', [MainController::class, 'paymentCallback'])->name('wallet.payment.callback');
+Route::get('/news', [MainController::class, 'news'])->name('news');
+Route::get('/news/{id}', [MainController::class, 'newsDetail'])->name('news.detail');
 
 // Authentication Routes
 Route::get('/login', [MainController::class, 'login'])->name('login');
@@ -68,6 +71,14 @@ Route::prefix('database')->name('database.')->group(function () {
     Route::get('/products', [DatabaseController::class, 'products'])->name('products');
     Route::get('/products/create', [DatabaseController::class, 'createProduct'])->name('create-product');
     Route::get('/products/{id}/edit', [DatabaseController::class, 'editProduct'])->name('edit-product');
+    Route::get('/news', [DatabaseController::class, 'news'])->name('news');
+    Route::get('/news/create', [DatabaseController::class, 'createNews'])->name('create-news');
+    Route::get('/news/{id}/edit', [DatabaseController::class, 'editNews'])->name('edit-news');
+    Route::get('/orders', [DatabaseController::class, 'orders'])->name('orders');
+    Route::get('/reviews', [DatabaseController::class, 'reviews'])->name('reviews');
+    Route::get('/transactions', [DatabaseController::class, 'transactions'])->name('transactions');
+    Route::get('/steam-accounts', [DatabaseController::class, 'steamAccounts'])->name('steam-accounts');
+    Route::get('/discussions', [DatabaseController::class, 'discussions'])->name('discussions');
     Route::get('/table/{tableName}/structure', [DatabaseController::class, 'tableStructure'])->name('table-structure');
     
     // AI Recommendation Management Routes

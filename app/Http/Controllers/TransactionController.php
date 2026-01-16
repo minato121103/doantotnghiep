@@ -76,9 +76,9 @@ class TransactionController extends Controller
             $query->orderBy($sortBy, $sortOrder);
         }
 
-        // Pagination
+        // Pagination (allow up to 10000 for admin stats)
         $perPage = $request->get('per_page', 15);
-        $perPage = min(max(1, $perPage), 100);
+        $perPage = min(max(1, $perPage), 10000);
 
         $transactions = $query->paginate($perPage);
 

@@ -152,18 +152,26 @@
                     
                     <!-- Dropdown Menu -->
                     <div class="absolute top-full left-0 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                        <div class="bg-slate-800 rounded-xl border border-slate-700 shadow-xl p-4 min-w-[280px]" id="categories-dropdown-menu">
+                        <div class="bg-slate-800 rounded-xl border border-slate-700 shadow-xl p-4 min-w-[520px]" id="categories-dropdown-menu">
                             <div class="flex items-center justify-center py-4" id="categories-loading">
                                 <div class="animate-spin w-6 h-6 border-2 border-game-accent border-t-transparent rounded-full"></div>
                             </div>
-                            <div class="grid grid-cols-1 gap-1 hidden" id="categories-list"></div>
+                            <div class="hidden" id="categories-list"></div>
                             <div class="pt-3 mt-3 border-t border-slate-700 hidden" id="categories-footer">
-                                <a href="{{ url('/store') }}" class="flex items-center justify-center gap-2 text-sm font-medium text-game-accent hover:text-game-accent-hover transition-colors">
-                                    Xem tất cả danh mục
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                                    </svg>
-                                </a>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <a href="{{ url('/store') }}" class="flex items-center gap-2 text-sm font-medium text-game-accent hover:text-game-accent-hover transition-colors">
+                                        Tất cả Game
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </a>
+                                    <a href="{{ url('/news') }}" class="flex items-center gap-2 text-sm font-medium text-game-purple hover:opacity-80 transition-colors">
+                                        Tất cả Tin tức
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -404,7 +412,8 @@
                         const adminLink = document.getElementById('admin-dashboard-link');
                         const mobileAdminLink = document.getElementById('mobile-admin-link');
                         
-                        if (user.role === 'admin') {
+                        // Show admin dashboard for admin and editor roles
+                        if (user.role === 'admin' || user.role === 'editor') {
                             if (adminLink) { adminLink.classList.remove('hidden'); adminLink.classList.add('flex'); }
                             if (mobileAdminLink) { mobileAdminLink.classList.remove('hidden'); mobileAdminLink.classList.add('flex'); }
                         }
@@ -485,7 +494,8 @@
                 const adminLink = document.getElementById('admin-dashboard-link');
                 const mobileAdminLink = document.getElementById('mobile-admin-link');
                 
-                if (user.role === 'admin') {
+                // Show admin dashboard for admin and editor roles
+                if (user.role === 'admin' || user.role === 'editor') {
                     if (adminLink) { adminLink.classList.remove('hidden'); adminLink.classList.add('flex'); }
                     if (mobileAdminLink) { mobileAdminLink.classList.remove('hidden'); mobileAdminLink.classList.add('flex'); }
                 }
@@ -681,40 +691,127 @@
         
         try {
             const baseUrl = '{{ url("/") }}';
-            const response = await fetch(`${baseUrl}/api/products/categories`);
-            const result = await response.json();
             
-            if (result.success && result.data.length > 0) {
+            // Fetch both game categories and news categories in parallel
+            const [gameResponse, newsResponse] = await Promise.all([
+                fetch(`${baseUrl}/api/products/categories`),
+                fetch(`${baseUrl}/api/news?per_page=1000`)
+            ]);
+            
+            const gameResult = await gameResponse.json();
+            const newsResult = await newsResponse.json();
+            
+            let gameHtml = '';
+            let newsHtml = '';
+            
+            // Game Categories
+            if (gameResult.success && gameResult.data.length > 0) {
                 const categoryIcons = {
                     'Hành Động': 'bolt', 'RPG': 'auto_stories', 'Phiêu Lưu': 'explore',
                     'Chiến Thuật': 'psychology', 'Giả Lập': 'computer', 'Thể Thao': 'sports_soccer',
-                    'indie': 'sports_esports', 'default': 'sports_esports'
+                    'indie': 'sports_esports', 'Đua Xe': 'sports_esports', 'default': 'sports_esports'
                 };
                 
-                const categories = result.data.slice(0, 8);
+                const gameCategories = gameResult.data.slice(0, 8);
                 
-                list.innerHTML = categories.map(cat => {
+                gameHtml = gameCategories.map(cat => {
                     const icon = categoryIcons[cat.category] || categoryIcons['default'];
                     return `
                         <a href="${baseUrl}/store?category=${encodeURIComponent(cat.category)}" 
                            class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-700 transition-colors group/item">
-                            <div class="w-7 h-7 bg-game-accent/20 rounded-lg flex items-center justify-center group-hover/item:bg-game-accent/30 transition-colors">
-                                <span class="material-icons-outlined text-base text-game-accent">${icon}</span>
+                            <div class="w-6 h-6 bg-game-accent/20 rounded-lg flex items-center justify-center group-hover/item:bg-game-accent/30 transition-colors">
+                                <span class="material-icons-outlined text-sm text-game-accent">${icon}</span>
                             </div>
                             <div class="flex-1">
                                 <span class="font-medium text-white text-xs">${cat.category}</span>
-                                <span class="text-[11px] text-slate-400 ml-2">(${cat.count})</span>
+                                <span class="text-[10px] text-slate-400 ml-1">(${cat.count})</span>
                             </div>
                         </a>
                     `;
                 }).join('');
+            }
+            
+            // News Categories
+            if (newsResult.success && newsResult.data && newsResult.data.length > 0) {
+                // Extract unique news categories
+                const newsCategoryMap = new Map();
+                newsResult.data.forEach(news => {
+                    if (news.category && news.category.trim()) {
+                        const category = news.category.trim();
+                        newsCategoryMap.set(category, (newsCategoryMap.get(category) || 0) + 1);
+                    }
+                });
                 
+                const newsCategories = Array.from(newsCategoryMap.entries())
+                    .map(([category, count]) => ({ category, count }))
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 6);
+                
+                if (newsCategories.length > 0) {
+                    const newsIcons = {
+                        'Công nghệ': 'devices', 'Game': 'sports_esports', 'Tin tức': 'article',
+                        'Esports': 'emoji_events', 'Review': 'rate_review', 'default': 'article'
+                    };
+                    
+                    newsHtml = newsCategories.map(cat => {
+                        const icon = newsIcons[cat.category] || newsIcons['default'];
+                        return `
+                            <a href="${baseUrl}/news?category=${encodeURIComponent(cat.category)}" 
+                               class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-700 transition-colors group/item">
+                                <div class="w-6 h-6 bg-game-purple/20 rounded-lg flex items-center justify-center group-hover/item:bg-game-purple/30 transition-colors">
+                                    <span class="material-icons-outlined text-sm text-game-purple">${icon}</span>
+                                </div>
+                                <div class="flex-1">
+                                    <span class="font-medium text-white text-xs">${cat.category}</span>
+                                    <span class="text-[10px] text-slate-400 ml-1">(${cat.count})</span>
+                                </div>
+                            </a>
+                        `;
+                    }).join('');
+                }
+            }
+            
+            // Build 2-column layout
+            let html = '';
+            if (gameHtml || newsHtml) {
+                html = `<div class="grid grid-cols-2 gap-4">`;
+                
+                // Left column - Game
+                html += `
+                    <div>
+                        <h4 class="text-xs font-semibold text-game-accent uppercase tracking-wider mb-2 pb-2 border-b border-slate-700 flex items-center gap-2">
+                            <span class="material-icons-outlined text-sm">sports_esports</span>
+                            Danh mục Game
+                        </h4>
+                        <div class="space-y-0.5">${gameHtml || '<p class="text-slate-400 text-xs">Không có danh mục</p>'}</div>
+                    </div>
+                `;
+                
+                // Right column - News
+                html += `
+                    <div>
+                        <h4 class="text-xs font-semibold text-game-purple uppercase tracking-wider mb-2 pb-2 border-b border-slate-700 flex items-center gap-2">
+                            <span class="material-icons-outlined text-sm">newspaper</span>
+                            Danh mục Tin tức
+                        </h4>
+                        <div class="space-y-0.5">${newsHtml || '<p class="text-slate-400 text-xs">Không có danh mục</p>'}</div>
+                    </div>
+                `;
+                
+                html += `</div>`;
+            }
+            
+            if (html) {
+                list.innerHTML = html;
                 loading.classList.add('hidden');
                 list.classList.remove('hidden');
                 footer.classList.remove('hidden');
                 categoriesLoaded = true;
+            } else {
+                loading.innerHTML = '<p class="text-sm text-slate-400 text-center">Không có danh mục</p>';
             }
         } catch (error) {
+            console.error('Error loading categories:', error);
             loading.innerHTML = '<p class="text-sm text-slate-400 text-center">Không thể tải danh mục</p>';
         }
     }
