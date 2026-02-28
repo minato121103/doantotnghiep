@@ -158,6 +158,27 @@ class RecommendationController extends Controller
 
         $limit = $request->get('limit', 10);
         $recommendations = $this->recommendationService->getUserRecommendations($userId, $limit);
+
+        // Bổ sung available_accounts để frontend hiển thị Hết hàng đúng
+        if (!empty($recommendations)) {
+            $ids = array_map(function ($item) {
+                return is_array($item) ? ($item['id'] ?? null) : ($item->id ?? null);
+            }, $recommendations);
+            $ids = array_filter($ids);
+            $counts = ProductSimple::withSum('steamAccounts', 'count')
+                ->whereIn('id', $ids)
+                ->get()
+                ->keyBy('id');
+            foreach ($recommendations as &$item) {
+                $id = is_array($item) ? ($item['id'] ?? null) : ($item->id ?? null);
+                $sum = (int) (optional($counts->get($id))->steam_accounts_sum_count ?? 0);
+                if (is_array($item)) {
+                    $item['available_accounts'] = $sum;
+                } else {
+                    $item->available_accounts = $sum;
+                }
+            }
+        }
         
         return response()->json([
             'success' => true,
@@ -172,7 +193,26 @@ class RecommendationController extends Controller
     {
         $limit = $request->get('limit', 10);
         $similar = $this->recommendationService->getSimilarProducts($productId, $limit);
-        
+
+        if (!empty($similar)) {
+            $ids = array_map(function ($item) {
+                return is_array($item) ? $item['id'] : $item->id;
+            }, $similar);
+            $counts = ProductSimple::withSum('steamAccounts', 'count')
+                ->whereIn('id', $ids)
+                ->get()
+                ->keyBy('id');
+            foreach ($similar as &$item) {
+                $id = is_array($item) ? $item['id'] : $item->id;
+                $sum = optional($counts->get($id))->steam_accounts_sum_count ?? 0;
+                if (is_array($item)) {
+                    $item['available_accounts'] = (int) $sum;
+                } else {
+                    $item->available_accounts = (int) $sum;
+                }
+            }
+        }
+
         return response()->json([
             'success' => true,
             'data' => $similar
@@ -190,13 +230,19 @@ class RecommendationController extends Controller
         $popularIds = \Illuminate\Support\Facades\Cache::get('popular_recommendations', []);
         
         if (!empty($popularIds)) {
-            // Lấy sản phẩm từ cache IDs và giữ thứ tự
-            $products = ProductSimple::whereIn('id', array_slice($popularIds, 0, $limit))
+            // Lấy sản phẩm từ cache IDs và giữ thứ tự (kèm số tài khoản để hiển thị Hết hàng đúng)
+            $products = ProductSimple::withSum('steamAccounts', 'count')
+                ->whereIn('id', array_slice($popularIds, 0, $limit))
                 ->get()
                 ->sortBy(function($product) use ($popularIds) {
                     return array_search($product->id, $popularIds);
                 })
                 ->values()
+                ->map(function ($product) {
+                    $arr = $product->toArray();
+                    $arr['available_accounts'] = (int) ($product->steam_accounts_sum_count ?? 0);
+                    return $arr;
+                })
                 ->toArray();
                 
             if (count($products) >= $limit) {
@@ -208,20 +254,21 @@ class RecommendationController extends Controller
         }
         
         // Fallback: Tính toán popular dựa trên view_count, orders, và rating
-        $products = DB::table('product_simple')
+        // First get product IDs with scores
+        $popularProductIds = DB::table('product_simple')
             ->leftJoin('orders', function($join) {
                 $join->on('product_simple.id', '=', 'orders.product_simple_id')
                      ->where('orders.status', '=', 'completed');
             })
             ->leftJoin('reviews', 'product_simple.id', '=', 'reviews.product_simple_id')
             ->select(
-                'product_simple.*',
+                'product_simple.id',
                 DB::raw('COUNT(DISTINCT orders.id) as order_count'),
                 DB::raw('COUNT(DISTINCT reviews.id) as review_count'),
-                DB::raw('COALESCE(AVG(reviews.rating), 0) as avg_rating')
+                DB::raw('COALESCE(AVG(reviews.rating), 0) as avg_rating'),
+                DB::raw('COALESCE(product_simple.view_count, 0) as view_count')
             )
-            ->groupBy('product_simple.id')
-            // Score = (orders * 5) + (reviews * 2) + (rating * 3) + (view_count / 100)
+            ->groupBy('product_simple.id', 'product_simple.view_count')
             ->orderByRaw('
                 (COUNT(DISTINCT orders.id) * 5) + 
                 (COUNT(DISTINCT reviews.id) * 2) + 
@@ -230,7 +277,22 @@ class RecommendationController extends Controller
                 DESC
             ')
             ->limit($limit)
+            ->pluck('id')
+            ->toArray();
+        
+        // Then fetch full product details (kèm số tài khoản để hiển thị Hết hàng đúng)
+        $products = ProductSimple::withSum('steamAccounts', 'count')
+            ->whereIn('id', $popularProductIds)
             ->get()
+            ->sortBy(function($product) use ($popularProductIds) {
+                return array_search($product->id, $popularProductIds);
+            })
+            ->values()
+            ->map(function ($product) {
+                $arr = $product->toArray();
+                $arr['available_accounts'] = (int) ($product->steam_accounts_sum_count ?? 0);
+                return $arr;
+            })
             ->toArray();
         
         return response()->json([

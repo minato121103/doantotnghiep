@@ -108,7 +108,7 @@
         </div>
     </section>
 
-    <!-- Featured Games Section -->
+    <!-- 1. Dành cho bạn (Featured Games) -->
     <section class="py-10">
         <div class="container mx-auto px-4">
             <div class="flex items-center justify-between mb-8">
@@ -116,7 +116,7 @@
                     <h2 class="font-display text-2xl md:text-3xl font-bold text-slate-800 mb-2">Dành cho bạn</h2>
                     <p class="text-slate-600">Những tựa game được đề xuất cho bạn</p>
                 </div>
-                <a href="{{ url('/store') }}?featured=true" class="hidden md:flex items-center text-game-accent hover:text-game-accent-hover transition-colors">
+                <a href="{{ url('/for-you') }}" class="hidden md:flex items-center text-game-accent hover:text-game-accent-hover transition-colors">
                     Xem tất cả
                     <svg class="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -130,7 +130,29 @@
         </div>
     </section>
 
-    <!-- Special Offers Banner -->
+    <!-- 2. Mới ra mắt (New Releases) -->
+    <section class="py-10 bg-slate-50/50">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between mb-8">
+                <div>
+                    <h2 class="font-display text-2xl md:text-3xl font-bold text-slate-800 mb-2">Mới ra mắt</h2>
+                    <p class="text-slate-600">Những tựa game mới nhất đã có mặt</p>
+                </div>
+                <a href="{{ url('/store') }}?sort=newest" class="hidden md:flex items-center text-game-accent hover:text-game-accent-hover transition-colors">
+                    Xem tất cả
+                    <svg class="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </a>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" id="new-releases">
+                <!-- Game cards will be loaded from API -->
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. Ưu đãi (Special Offers) -->
     <section class="py-10 bg-gradient-to-r from-indigo-50 to-purple-50 relative overflow-hidden">
         <div class="absolute inset-0 bg-gradient-to-r from-game-purple/10 to-game-accent/10"></div>
         <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=1920')] bg-cover bg-center opacity-5"></div>
@@ -148,7 +170,7 @@
                         Nhanh tay sở hữu những tựa game hot nhất với giá ưu đãi. Chương trình có hạn!
                     </p>
                     <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                        <a href="{{ url('/deals') }}" class="px-8 py-4 bg-gradient-to-r from-game-orange to-game-pink text-white font-bold rounded-full hover:opacity-90 transition-all pulse-glow">
+                        <a href="{{ url('/store') }}?on_sale=true" class="px-8 py-4 bg-gradient-to-r from-game-orange to-game-pink text-white font-bold rounded-full hover:opacity-90 transition-all pulse-glow">
                             Xem ưu đãi
                         </a>
                     </div>
@@ -188,15 +210,15 @@
         </div>
     </section>
 
-    <!-- New Releases -->
+    <!-- 4. Tin tức (News) -->
     <section class="py-10">
         <div class="container mx-auto px-4">
             <div class="flex items-center justify-between mb-8">
                 <div>
-                    <h2 class="font-display text-2xl md:text-3xl font-bold text-slate-800 mb-2">Mới ra mắt</h2>
-                    <p class="text-slate-600">Những tựa game mới nhất đã có mặt</p>
+                    <h2 class="font-display text-2xl md:text-3xl font-bold text-slate-800 mb-2">Tin tức</h2>
+                    <p class="text-slate-600">Cập nhật tin tức mới nhất về game</p>
                 </div>
-                <a href="{{ url('/store') }}?sort=newest" class="hidden md:flex items-center text-game-accent hover:text-game-accent-hover transition-colors">
+                <a href="{{ url('/news') }}" class="hidden md:flex items-center text-game-accent hover:text-game-accent-hover transition-colors">
                     Xem tất cả
                     <svg class="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -204,85 +226,30 @@
                 </a>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" id="new-releases">
-                <!-- Game cards will be loaded from API -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="news-section">
+                <!-- News will be loaded from API -->
             </div>
         </div>
     </section>
 
-    <!-- Why Choose Us -->
-    <section class="py-10 bg-slate-100/50">
+    <!-- 5. Cộng đồng (Community) -->
+    <section class="py-10 bg-slate-50/50">
         <div class="container mx-auto px-4">
-            <div class="text-center mb-12">
-                <h2 class="font-display text-2xl md:text-3xl font-bold text-slate-800 mb-4">Tại sao chọn GameTech?</h2>
-                <p class="text-slate-600 max-w-2xl mx-auto">Chúng tôi cam kết mang đến trải nghiệm mua sắm game tốt nhất cho bạn</p>
+            <div class="flex items-center justify-between mb-8">
+                <div>
+                    <h2 class="font-display text-2xl md:text-3xl font-bold text-slate-800 mb-2">Cộng đồng</h2>
+                    <p class="text-slate-600">Tham gia thảo luận cùng game thủ</p>
+                </div>
+                <a href="{{ url('/community') }}" class="hidden md:flex items-center text-game-accent hover:text-game-accent-hover transition-colors">
+                    Xem tất cả
+                    <svg class="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </a>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div class="bg-white rounded-xl p-6 border border-slate-200 text-center group hover:border-game-accent hover:shadow-lg transition-all">
-                    <div class="w-16 h-16 bg-game-accent/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                        <svg class="w-8 h-8 text-game-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                        </svg>
-                    </div>
-                    <h3 class="font-heading text-lg font-semibold text-slate-800 mb-2">An toàn & Bảo mật</h3>
-                    <p class="text-slate-500 text-sm">Mọi giao dịch được bảo mật tuyệt đối với hệ thống mã hóa tiên tiến</p>
-                </div>
-                
-                <div class="bg-white rounded-xl p-6 border border-slate-200 text-center group hover:border-game-purple hover:shadow-lg transition-all">
-                    <div class="w-16 h-16 bg-game-purple/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                        <svg class="w-8 h-8 text-game-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                        </svg>
-                    </div>
-                    <h3 class="font-heading text-lg font-semibold text-slate-800 mb-2">Giao hàng tức thì</h3>
-                    <p class="text-slate-500 text-sm">Nhận tài khoản ngay lập tức sau khi thanh toán thành công</p>
-                </div>
-                
-                <div class="bg-white rounded-xl p-6 border border-slate-200 text-center group hover:border-game-green hover:shadow-lg transition-all">
-                    <div class="w-16 h-16 bg-game-green/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                        <svg class="w-8 h-8 text-game-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"/>
-                        </svg>
-                    </div>
-                    <h3 class="font-heading text-lg font-semibold text-slate-800 mb-2">Hỗ trợ 24/7</h3>
-                    <p class="text-slate-500 text-sm">Đội ngũ hỗ trợ luôn sẵn sàng giúp đỡ bạn mọi lúc</p>
-                </div>
-                
-                <div class="bg-white rounded-xl p-6 border border-slate-200 text-center group hover:border-game-orange hover:shadow-lg transition-all">
-                    <div class="w-16 h-16 bg-game-orange/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                        <svg class="w-8 h-8 text-game-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                    </div>
-                    <h3 class="font-heading text-lg font-semibold text-slate-800 mb-2">Giá tốt nhất</h3>
-                    <p class="text-slate-500 text-sm">Cam kết giá cạnh tranh nhất thị trường với nhiều ưu đãi hấp dẫn</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Newsletter -->
-    <section class="py-10">
-        <div class="container mx-auto px-4">
-            <div class="bg-gradient-to-r from-indigo-100 to-purple-100 rounded-2xl p-8 md:p-12 text-center relative overflow-hidden border border-slate-200">
-                <div class="absolute inset-0 bg-white/50"></div>
-                <div class="relative z-10">
-                    <h2 class="font-display text-2xl md:text-3xl font-bold text-slate-800 mb-4">
-                        Đăng ký nhận tin
-                    </h2>
-                    <p class="text-slate-600 mb-8 max-w-lg mx-auto">
-                        Nhận thông tin về game mới, khuyến mãi và ưu đãi độc quyền ngay trong hộp thư của bạn.
-                    </p>
-                    <form class="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-                        <input type="email" 
-                               placeholder="Nhập email của bạn" 
-                               class="flex-1 px-6 py-4 bg-white border border-slate-300 rounded-full text-slate-800 placeholder-slate-400 focus:outline-none focus:border-game-accent focus:ring-2 focus:ring-game-accent/20 transition-colors">
-                        <button type="submit" class="px-8 py-4 bg-gradient-to-r from-game-accent to-game-purple text-white font-bold rounded-full hover:opacity-90 transition-all">
-                            Đăng ký
-                        </button>
-                    </form>
-                </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="community-section">
+                <!-- Community posts will be loaded from API -->
             </div>
         </div>
     </section>
@@ -467,13 +434,16 @@
         const container = document.getElementById(containerId);
         if (!container) return;
         
-        container.innerHTML = games.map(game => `
+        container.innerHTML = games.map(game => {
+            const outOfStock = isOutOfStock(game);
+            return `
             <div class="group bg-white rounded-xl overflow-hidden border border-slate-200 hover:border-game-accent hover:shadow-lg transition-all card-hover flex">
                 <!-- Left: Image -->
-                <a href="${GAME_BASE_URL}/${game.id}" class="flex-shrink-0 w-28 h-28 overflow-hidden">
+                <a href="${GAME_BASE_URL}/${game.id}" class="flex-shrink-0 w-28 h-28 overflow-hidden relative block">
                     <img src="${game.image || 'https://via.placeholder.com/150x150?text=Game'}" 
                          alt="${escapeHtml(game.title)}" 
                          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                    ${outOfStock ? outOfStockOverlay() : ''}
                 </a>
                 <!-- Right: Content -->
                 <div class="flex-1 p-3 flex flex-col justify-between min-w-0">
@@ -487,7 +457,7 @@
                     </div>
                     <div class="flex items-center justify-between mt-2">
                         ${formatPrice(game.price)}
-                        <button type="button"
+                        ${outOfStock ? `<span class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed" title="Hết hàng"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg></span>` : `<button type="button"
                                 class="w-8 h-8 bg-game-accent rounded-lg flex items-center justify-center hover:bg-game-accent-hover transition-colors cursor-pointer add-to-cart-btn"
                                 data-product-id="${game.id}"
                                 data-product-title="${escapeHtml(game.title)}"
@@ -497,11 +467,12 @@
                             <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                             </svg>
-                        </button>
+                        </button>`}
                     </div>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
     }
     
     // Hiển thị danh sách game giả lập khi lỗi/không có dữ liệu
@@ -616,6 +587,14 @@
         // Same price - just show once
         return `<span class="text-game-accent font-bold">${currentPrice}</span>`;
     }
+
+    function isOutOfStock(product) {
+        return (product.available_accounts || 0) === 0;
+    }
+
+    function outOfStockOverlay() {
+        return `<div class="absolute inset-0 flex items-center justify-center bg-white/75 z-10"><span class="font-bold text-slate-700 text-sm">Hết hàng</span></div>`;
+    }
     
     // Định dạng giá riêng cho thẻ Hero (cỡ chữ lớn hơn)
     function formatHeroPrice(priceStr) {
@@ -684,21 +663,28 @@
         };
     }
     
-    // Tạo HTML cho 1 thẻ game trong Hero
     function renderHeroGameCard(game) {
-        const discount = calculateDiscount(game.price);
+        const discount = game.discount_percent || calculateDiscount(game.price);
+        const outOfStock = isOutOfStock(game);
         const prices = extractPrices(game.price);
+        let priceHtml;
+        if (game.sale_price) {
+            priceHtml = `<span class="text-slate-400 line-through text-xs">${prices.current || game.price}</span>
+                <span class="text-game-accent font-bold text-lg">${new Intl.NumberFormat('vi-VN').format(Math.round(game.sale_price))}đ</span>`;
+        } else {
+            priceHtml = `${prices.original && prices.original !== prices.current ? `<span class="text-slate-400 line-through text-xs">${prices.original}</span>` : ''}
+                <span class="text-game-accent font-bold text-lg">${prices.current || 'Liên hệ'}</span>`;
+        }
         
         return `
             <div class="group bg-white rounded-xl overflow-hidden border border-game-border shadow-xl hover:shadow-2xl hover:border-game-accent transition-all duration-300 card-hover flex">
-                <!-- Left: Image -->
                 <a href="${GAME_BASE_URL}/${game.id}" class="flex-shrink-0 w-24 h-24 overflow-hidden rounded-lg m-3 relative">
                     <img src="${game.image || 'https://via.placeholder.com/150x150?text=Game'}" 
                          alt="${escapeHtml(game.title)}" 
                          class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
-                    ${discount > 0 ? `<div class="absolute top-1 right-1 px-1.5 py-0.5 bg-game-green text-white text-[10px] font-bold rounded">-${discount}%</div>` : ''}
+                    ${outOfStock ? outOfStockOverlay() : ''}
+                    ${!outOfStock && discount > 0 ? `<div class="absolute top-1 right-1 px-1.5 py-0.5 bg-game-green text-white text-[10px] font-bold rounded">-${discount}%</div>` : ''}
                 </a>
-                <!-- Right: Content -->
                 <div class="flex-1 py-3 pr-3 flex flex-col justify-between min-w-0">
                     <div>
                         <a href="${GAME_BASE_URL}/${game.id}" class="font-heading font-semibold text-slate-800 text-sm leading-tight line-clamp-2 group-hover:text-game-accent transition-colors">
@@ -710,10 +696,9 @@
                     </div>
                     <div class="flex items-center justify-between mt-2">
                         <div class="flex items-center gap-2">
-                            ${prices.original && prices.original !== prices.current ? `<span class="text-slate-400 line-through text-xs">${prices.original}</span>` : ''}
-                            <span class="text-game-accent font-bold text-lg">${prices.current || 'Liên hệ'}</span>
+                            ${priceHtml}
                         </div>
-                        <button type="button"
+                        ${outOfStock ? `<span class="w-9 h-9 flex items-center justify-center rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed" title="Hết hàng"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg></span>` : `<button type="button"
                                 class="w-9 h-9 bg-game-accent rounded-lg flex items-center justify-center hover:bg-game-accent-hover transition-colors shadow-lg hover:shadow-xl hover:scale-105 transform duration-200 cursor-pointer add-to-cart-btn"
                                 data-product-id="${game.id}"
                                 data-product-title="${escapeHtml(game.title)}"
@@ -723,7 +708,7 @@
                             <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                             </svg>
-                        </button>
+                        </button>`}
                     </div>
                 </div>
             </div>
@@ -871,11 +856,234 @@
         }, 2000);
     }
     
+    // Trích xuất ảnh đầu tiên từ nội dung HTML
+    function extractFirstImage(html) {
+        if (!html) return null;
+        const imgMatch = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+        return imgMatch ? imgMatch[1] : null;
+    }
+    
+    // Trích xuất text thuần từ HTML
+    function stripHtmlTags(html) {
+        if (!html) return '';
+        const div = document.createElement('div');
+        div.innerHTML = html;
+        return div.textContent || div.innerText || '';
+    }
+    
+    // Tải tin tức
+    async function loadNews() {
+        const container = document.getElementById('news-section');
+        if (!container) return;
+        
+        // Loading skeleton
+        container.innerHTML = `
+            <div class="animate-pulse bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div class="h-40 bg-slate-200"></div>
+                <div class="p-4 space-y-2">
+                    <div class="h-4 bg-slate-200 rounded w-3/4"></div>
+                    <div class="h-3 bg-slate-200 rounded w-full"></div>
+                    <div class="h-3 bg-slate-200 rounded w-1/2"></div>
+                </div>
+            </div>
+        `.repeat(3);
+        
+        try {
+            const response = await fetch(`${BASE_URL}/api/news?per_page=3`);
+            if (!response.ok) throw new Error('Failed to load news');
+            const data = await response.json();
+            
+            if (data.success && data.data && data.data.length > 0) {
+                container.innerHTML = data.data.map(news => {
+                    // Trích xuất ảnh từ description HTML
+                    const imageUrl = extractFirstImage(news.description) || 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=400';
+                    // Trích xuất text thuần cho excerpt
+                    const excerpt = stripHtmlTags(news.description).substring(0, 120);
+                    // Format ngày từ published_at hoặc created_at
+                    const dateStr = news.published_at || (news.created_at ? new Date(news.created_at).toLocaleDateString('vi-VN') : '');
+                    
+                    return `
+                        <a href="${BASE_URL}/news/${news.id}" class="group bg-white rounded-xl border border-slate-200 overflow-hidden hover:border-game-accent hover:shadow-lg transition-all">
+                            <div class="h-40 overflow-hidden">
+                                <img src="${imageUrl}" 
+                                     alt="${escapeHtml(news.title)}"
+                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                     onerror="this.src='https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=400'">
+                            </div>
+                            <div class="p-4">
+                                <h3 class="font-heading font-semibold text-slate-800 line-clamp-2 group-hover:text-game-accent transition-colors mb-2">
+                                    ${escapeHtml(news.title)}
+                                </h3>
+                                <p class="text-slate-500 text-sm line-clamp-2 mb-3">${escapeHtml(excerpt)}...</p>
+                                <div class="flex items-center text-xs text-slate-400">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                    ${dateStr}
+                                </div>
+                            </div>
+                        </a>
+                    `;
+                }).join('');
+            } else {
+                renderNewsPlaceholder();
+            }
+        } catch (error) {
+            console.error('Error loading news:', error);
+            renderNewsPlaceholder();
+        }
+    }
+    
+    // Placeholder cho tin tức
+    function renderNewsPlaceholder() {
+        const container = document.getElementById('news-section');
+        if (!container) return;
+        
+        const placeholders = [
+            { title: 'GTA 6 chính thức công bố ngày phát hành', excerpt: 'Rockstar Games vừa xác nhận ngày phát hành chính thức của tựa game được mong đợi nhất...', image: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=400', date: '10/02/2026' },
+            { title: 'Steam mở đợt sale lớn nhất năm', excerpt: 'Đợt giảm giá mùa xuân của Steam đã bắt đầu với hàng nghìn tựa game được giảm giá...', image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=400', date: '09/02/2026' },
+            { title: 'Elden Ring DLC nhận điểm review cao', excerpt: 'Shadow of the Erdtree nhận được điểm số gần như tuyệt đối từ các trang đánh giá game...', image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=400', date: '08/02/2026' },
+        ];
+        
+        container.innerHTML = placeholders.map(news => `
+            <a href="${BASE_URL}/news" class="group bg-white rounded-xl border border-slate-200 overflow-hidden hover:border-game-accent hover:shadow-lg transition-all">
+                <div class="h-40 overflow-hidden">
+                    <img src="${news.image}" alt="${news.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                </div>
+                <div class="p-4">
+                    <h3 class="font-heading font-semibold text-slate-800 line-clamp-2 group-hover:text-game-accent transition-colors mb-2">${news.title}</h3>
+                    <p class="text-slate-500 text-sm line-clamp-2 mb-3">${news.excerpt}</p>
+                    <div class="flex items-center text-xs text-slate-400">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        ${news.date}
+                    </div>
+                </div>
+            </a>
+        `).join('');
+    }
+    
+    // Format thời gian tương đối
+    function formatRelativeTime(dateString) {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffSecs = Math.floor(diffMs / 1000);
+        const diffMins = Math.floor(diffSecs / 60);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+        
+        if (diffSecs < 60) return 'Vừa xong';
+        if (diffMins < 60) return `${diffMins} phút trước`;
+        if (diffHours < 24) return `${diffHours} giờ trước`;
+        if (diffDays < 7) return `${diffDays} ngày trước`;
+        return date.toLocaleDateString('vi-VN');
+    }
+    
+    // Tải bài viết cộng đồng (ngẫu nhiên)
+    async function loadCommunity() {
+        const container = document.getElementById('community-section');
+        if (!container) return;
+        
+        // Loading skeleton
+        container.innerHTML = `
+            <div class="animate-pulse bg-white rounded-xl border border-slate-200 p-4">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 bg-slate-200 rounded-full"></div>
+                    <div class="space-y-1 flex-1">
+                        <div class="h-3 bg-slate-200 rounded w-1/3"></div>
+                        <div class="h-2 bg-slate-200 rounded w-1/4"></div>
+                    </div>
+                </div>
+                <div class="h-4 bg-slate-200 rounded w-full mb-2"></div>
+                <div class="h-4 bg-slate-200 rounded w-3/4"></div>
+            </div>
+        `.repeat(3);
+        
+        try {
+            // Lấy nhiều bài viết hơn để chọn ngẫu nhiên
+            const response = await fetch(`${BASE_URL}/api/community/posts?per_page=20`);
+            if (!response.ok) throw new Error('Failed to load community');
+            const data = await response.json();
+            
+            if (data.success && data.data && data.data.length > 0) {
+                // Shuffle mảng và lấy 3 bài ngẫu nhiên
+                const shuffled = [...data.data].sort(() => 0.5 - Math.random());
+                const randomPosts = shuffled.slice(0, 3);
+                
+                container.innerHTML = randomPosts.map(post => `
+                    <a href="${BASE_URL}/community?post=${post.id}" class="group bg-white rounded-xl border border-slate-200 p-4 hover:border-game-accent hover:shadow-lg transition-all">
+                        <div class="flex items-center gap-3 mb-3">
+                            <img src="${post.user?.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(post.user?.name || 'User') + '&background=random'}" 
+                                 alt="${escapeHtml(post.user?.name || 'User')}"
+                                 class="w-10 h-10 rounded-full object-cover border-2 border-slate-100">
+                            <div>
+                                <div class="font-semibold text-slate-800 text-sm">${escapeHtml(post.user?.name || 'Người dùng')}</div>
+                                <div class="text-xs text-slate-400">${formatRelativeTime(post.created_at)}</div>
+                            </div>
+                        </div>
+                        <p class="text-slate-700 line-clamp-3 mb-3 group-hover:text-slate-900 transition-colors">${escapeHtml(post.content || '')}</p>
+                        ${post.media_url ? `
+                            <div class="rounded-lg overflow-hidden mb-3">
+                                <img src="${post.media_url}" alt="Post media" class="w-full h-32 object-cover">
+                            </div>
+                        ` : ''}
+                        <div class="flex items-center gap-4 text-sm text-slate-500">
+                            <span class="flex items-center gap-1">
+                                <svg class="w-4 h-4 text-red-400" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                                </svg>
+                                ${post.likes_count || 0}
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                                </svg>
+                                ${post.comments_count || 0}
+                            </span>
+                        </div>
+                    </a>
+                `).join('');
+            } else {
+                // Không có bài viết - hiển thị thông báo
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-8">
+                        <svg class="w-16 h-16 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"/>
+                        </svg>
+                        <p class="text-slate-500">Chưa có bài viết nào</p>
+                        <a href="${BASE_URL}/community" class="inline-block mt-4 px-6 py-2 bg-game-accent text-white rounded-lg hover:bg-game-accent-hover transition-colors">
+                            Tham gia cộng đồng
+                        </a>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error loading community:', error);
+            // Hiển thị thông báo lỗi thay vì placeholder ảo
+            container.innerHTML = `
+                <div class="col-span-full text-center py-8">
+                    <svg class="w-16 h-16 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"/>
+                    </svg>
+                    <p class="text-slate-500 mb-2">Không thể tải bài viết cộng đồng</p>
+                    <a href="${BASE_URL}/community" class="inline-block px-6 py-2 bg-game-accent text-white rounded-lg hover:bg-game-accent-hover transition-colors">
+                        Xem cộng đồng
+                    </a>
+                </div>
+            `;
+        }
+    }
+
     // Khởi tạo: gọi API và bắt đầu đếm thời gian
     document.addEventListener('DOMContentLoaded', () => {
         loadHeroGame();
         loadFeaturedGames();
         loadNewReleases();
+        loadNews();
+        loadCommunity();
         updateCountdown();
         setInterval(updateCountdown, 1000);
 

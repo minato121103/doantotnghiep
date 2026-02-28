@@ -19,6 +19,13 @@ class ProductSimpleController extends Controller
     {
         $query = ProductSimple::query();
 
+        #chỉ sản phẩm đang trong ưu đãi
+        if ($request->boolean('on_promotion')) {
+            $query->whereHas('promotions', function ($q) {
+                $q->where('starts_at', '<=', now())->where('ends_at', '>=', now());
+            });
+        }
+
         #lọc theo danh mục
         if ($request->has('category') && $request->category) {
             $query->where('category', $request->category);
@@ -69,10 +76,20 @@ class ProductSimpleController extends Controller
 
         $products = $query->withSum('steamAccounts', 'count')->paginate($perPage);
 
-        // Map thêm available_accounts từ tổng count của steam accounts
         $productsData = collect($products->items())->map(function ($product) {
             $productArray = $product->toArray();
-            $productArray['available_accounts'] = $product->steam_accounts_sum_count ?? 0;
+            $productArray['available_accounts'] = (int) ($product->steam_accounts_sum_count ?? 0);
+            try {
+                $sale = $product->getSalePrice();
+                if ($sale) {
+                    $productArray['sale_price'] = $sale['sale_price'];
+                    $productArray['discount_percent'] = $sale['discount_percent'];
+                    $productArray['promotion_name'] = $sale['promotion_name'] ?? null;
+                    $productArray['promotion_ends_at'] = $sale['promotion_ends_at'] ?? null;
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Product sale price failed', ['product_id' => $product->id, 'message' => $e->getMessage()]);
+            }
             return $productArray;
         });
 
@@ -135,7 +152,7 @@ class ProductSimpleController extends Controller
      */
     public function show($id)
     {
-        $product = ProductSimple::find($id);
+        $product = ProductSimple::withSum('steamAccounts', 'count')->find($id);
 
         if (!$product) {
             return response()->json([
@@ -146,9 +163,24 @@ class ProductSimpleController extends Controller
 
         $product->increment('view_count');
 
+        $productArray = $product->toArray();
+        $productArray['available_accounts'] = (int) ($product->steam_accounts_sum_count ?? 0);
+
+        try {
+            $sale = $product->getSalePrice();
+            if ($sale) {
+                $productArray['sale_price'] = $sale['sale_price'];
+                $productArray['discount_percent'] = $sale['discount_percent'];
+                $productArray['promotion_name'] = $sale['promotion_name'] ?? null;
+                $productArray['promotion_ends_at'] = $sale['promotion_ends_at'] ?? null;
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Product sale price failed', ['product_id' => $product->id, 'message' => $e->getMessage()]);
+        }
+
         return response()->json([
             'success' => true,
-            'data' => $product
+            'data' => $productArray
         ]);
     }
 

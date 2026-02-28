@@ -8,6 +8,8 @@ use App\Models\User;
 use App\Models\ProductSimple;
 use App\Models\SteamAccount;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Artisan;
 
 class AITrainingDataSeeder extends Seeder
 {
@@ -57,11 +59,7 @@ class AITrainingDataSeeder extends Seeder
 
     public function run(): void
     {
-        $this->command->info('');
-        $this->command->info('╔════════════════════════════════════════════════════════════╗');
-        $this->command->info('║  🤖 AI TRAINING DATA GENERATOR (Complete Reset)           ║');
-        $this->command->info('╚════════════════════════════════════════════════════════════╝');
-        $this->command->info('');
+
 
         // Step 1: Xóa dữ liệu AI training (giữ nguyên products, steam_accounts gốc)
         $this->command->info('📋 Bước 1: Xóa dữ liệu training cũ...');
@@ -124,12 +122,14 @@ class AITrainingDataSeeder extends Seeder
         // Step 5: Train AI
         $this->command->newLine();
         $this->command->info('📋 Bước 4: Training AI Recommendation...');
-        $this->call('recommendation:train', ['--force' => true]);
+        Artisan::call('recommendation:train', ['--force' => true]);
+        $this->command->info(Artisan::output());
 
         // Step 6: Evaluate
         $this->command->newLine();
         $this->command->info('📋 Bước 5: Đánh giá kết quả...');
-        $this->call('recommendation:evaluate', ['--k' => 10]);
+        Artisan::call('recommendation:evaluate', ['--k' => 10]);
+        $this->command->info(Artisan::output());
     }
 
     /**
@@ -156,23 +156,41 @@ class AITrainingDataSeeder extends Seeder
         ]);
 
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-        $this->command->info('   ✅ Đã xóa: orders, reviews, transactions, interactions, recommendations');
+        $this->command->info('Đã xóa: orders, reviews, transactions, interactions, recommendations');
     }
 
     /**
      * Reset steam_accounts về trạng thái ban đầu
+     * - Online accounts (có email): count = 1
+     * - Offline accounts (không email): count = 10
      */
     protected function resetSteamAccounts(): void
     {
-        // Reset tất cả steam_accounts về available với count mặc định
-        DB::table('steam_accounts')->update([
-            'status' => 'available',
-            'sold_at' => null,
-            'count' => 10, // Reset về count mặc định
-        ]);
+        // Reset ONLINE accounts (có email) về count=1
+        $onlineCount = DB::table('steam_accounts')
+            ->whereNotNull('email')
+            ->where('email', '!=', '')
+            ->update([
+                'status' => 'available',
+                'sold_at' => null,
+                'count' => 1,
+            ]);
+
+        // Reset OFFLINE accounts (không có email) về count=10
+        $offlineCount = DB::table('steam_accounts')
+            ->where(function($query) {
+                $query->whereNull('email')
+                      ->orWhere('email', '=', '');
+            })
+            ->update([
+                'status' => 'available',
+                'sold_at' => null,
+                'count' => 10,
+            ]);
         
-        $count = DB::table('steam_accounts')->count();
-        $this->command->info("   ✅ Đã reset {$count} steam_accounts về available (count=10)");
+        $this->command->info("   Đã reset steam_accounts:");
+        $this->command->info("      - Online (có email): {$onlineCount} accounts → count=1");
+        $this->command->info("      - Offline (không email): {$offlineCount} accounts → count=10");
     }
 
     /**
@@ -266,7 +284,7 @@ class AITrainingDataSeeder extends Seeder
 
     protected function createOrder($user, $product, $steamAccount, $amount, $date): ?int
     {
-        return DB::table('orders')->insertGetId([
+        $orderId = DB::table('orders')->insertGetId([
             'order_code' => 'ORD' . strtoupper(uniqid()),
             'buyer_id' => $user->id,
             'steam_account_id' => $steamAccount->id,
@@ -279,6 +297,36 @@ class AITrainingDataSeeder extends Seeder
             'created_at' => $date,
             'updated_at' => $date,
         ]);
+
+        // Create order_item with credentials (plain text - no encryption)
+        if ($orderId) {
+            // SteamAccount model has accessors that auto-decrypt password/email_password
+            // So when we access $steamAccount->password, we get plain text
+            $isOnline = !empty($steamAccount->email);
+            
+            $credentials = [
+                'username' => $steamAccount->username,
+                'password' => $steamAccount->password, // Already decrypted by accessor
+            ];
+            
+            // Online accounts include email and email_password
+            if ($isOnline) {
+                $credentials['email'] = $steamAccount->email;
+                $credentials['email_password'] = $steamAccount->email_password; // Already decrypted by accessor
+            }
+
+            DB::table('order_items')->insert([
+                'order_id' => $orderId,
+                'steam_account_id' => $steamAccount->id,
+                'product_simple_id' => $product->id,
+                'steam_credentials' => json_encode($credentials),
+                'price' => $amount,
+                'created_at' => $date,
+                'updated_at' => $date,
+            ]);
+        }
+
+        return $orderId;
     }
 
     protected function createPurchaseTransaction($user, $amount, $orderId, $productTitle, $date): void
@@ -373,23 +421,40 @@ class AITrainingDataSeeder extends Seeder
 
     protected function findAvailableSteamAccount($productId)
     {
-        // Tìm account liên kết với product và còn count > 0
-        $account = DB::table('steam_account_games')
-            ->join('steam_accounts', 'steam_accounts.id', '=', 'steam_account_games.steam_account_id')
+        // Get product type to match account type
+        $product = DB::table('product_simple')->where('id', $productId)->first();
+        $isOnlineGame = $product && $product->type === 'online';
+        
+        // Tìm account chứa game này với matching type
+        $query = SteamAccount::join('steam_account_games', 'steam_accounts.id', '=', 'steam_account_games.steam_account_id')
             ->where('steam_account_games.product_simple_id', $productId)
             ->where('steam_accounts.status', 'available')
-            ->where('steam_accounts.count', '>', 0)
+            ->where('steam_accounts.count', '>', 0);
+        
+        // Match account type với game type
+        if ($isOnlineGame) {
+            $query->whereNotNull('steam_accounts.email'); // Online game cần online account
+        } else {
+            $query->whereNull('steam_accounts.email'); // Offline game cần offline account
+        }
+        
+        $account = $query->inRandomOrder()
             ->select('steam_accounts.*')
             ->first();
 
         if ($account) return $account;
 
-        // Fallback: random account còn hàng
-        return DB::table('steam_accounts')
-            ->where('status', 'available')
-            ->where('count', '>', 0)
-            ->inRandomOrder()
-            ->first();
+        // Fallback: random account với type phù hợp
+        $fallbackQuery = SteamAccount::where('status', 'available')
+            ->where('count', '>', 0);
+        
+        if ($isOnlineGame) {
+            $fallbackQuery->whereNotNull('email');
+        } else {
+            $fallbackQuery->whereNull('email');
+        }
+        
+        return $fallbackQuery->inRandomOrder()->first();
     }
 
     protected function generateRating($product, $pattern): int

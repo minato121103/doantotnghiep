@@ -24,6 +24,8 @@ class User extends Authenticatable
         'password',
         'phone',
         'avatar',
+        'bio',
+        'cover_image',
         'role',
         'status',
         'balance',
@@ -79,5 +81,23 @@ class User extends Authenticatable
         return $this->hasMany(Review::class, 'buyer_id');
     }
 
+    // Bạn bè đã chấp nhận
+    public function friends()
+    {
+        return $this->belongsToMany(User::class, 'friendships', 'sender_id', 'receiver_id')
+                    ->wherePivot('status', 'accepted')
+                    ->withTimestamps();
+    }
 
+    // Tin nhắn đã gửi
+    public function sentMessages()
+    {
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+
+    // Tin nhắn đã nhận
+    public function receivedMessages()
+    {
+        return $this->hasMany(Message::class, 'receiver_id');
+    }
 }

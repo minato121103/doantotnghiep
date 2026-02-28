@@ -430,113 +430,125 @@
     function showCredentialsModal(order) {
         const item = order.items[0];
         const credentials = item.steam_credentials || {};
+        const isOnline = credentials.email && credentials.email_password;
 
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4';
         modal.innerHTML = `
-            <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 animate-scale-in">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="font-heading text-2xl font-bold text-slate-800">Thông tin đăng nhập</h3>
+            <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-5 animate-scale-in">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-heading text-xl font-bold text-slate-800">Thông tin đăng nhập</h3>
                     <button onclick="this.closest('.fixed').remove()" class="text-slate-400 hover:text-slate-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
                     </button>
                 </div>
                 
-                <div class="space-y-4 mb-6">
+                <div class="space-y-3 mb-4">
                     <div>
-                        <label class="block text-sm font-semibold text-slate-600 mb-2">Tên đăng nhập Steam</label>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">Tên đăng nhập Steam</label>
                         <div class="flex items-center gap-2">
                             <input type="text" 
                                    value="${escapeHtml(credentials.username || '')}" 
                                    readonly 
-                                   class="flex-1 px-4 py-2 bg-slate-50 border border-game-border rounded-lg text-slate-800 font-mono"
+                                   class="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-mono text-sm"
                                    id="cred-username">
                             <button onclick="copyToClipboard('cred-username')" 
-                                    class="px-4 py-2 bg-game-accent text-white rounded-lg hover:bg-game-accent-hover transition-colors text-sm">
+                                    class="px-3 py-1.5 bg-game-accent text-white rounded-lg hover:bg-game-accent-hover transition-colors text-xs font-medium">
                                 Copy
                             </button>
                         </div>
                     </div>
                     
                     <div>
-                        <label class="block text-sm font-semibold text-slate-600 mb-2">Mật khẩu Steam</label>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">Mật khẩu Steam</label>
                         <div class="flex items-center gap-2">
                             <input type="text" 
                                    value="${escapeHtml(credentials.password || '')}" 
                                    readonly 
-                                   class="flex-1 px-4 py-2 bg-slate-50 border border-game-border rounded-lg text-slate-800 font-mono"
+                                   class="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-mono text-sm"
                                    id="cred-password">
                             <button onclick="copyToClipboard('cred-password')" 
-                                    class="px-4 py-2 bg-game-accent text-white rounded-lg hover:bg-game-accent-hover transition-colors text-sm">
+                                    class="px-3 py-1.5 bg-game-accent text-white rounded-lg hover:bg-game-accent-hover transition-colors text-xs font-medium">
                                 Copy
                             </button>
                         </div>
                     </div>
                     
+                    ${!isOnline ? `
                     <div>
-                        <label class="block text-sm font-semibold text-slate-600 mb-2">Mã Steam</label>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">Mã Steam</label>
                         <div class="flex items-center gap-2">
                             <input type="text" 
                                    value="" 
                                    readonly 
-                                   class="flex-1 px-4 py-2 bg-slate-50 border border-game-border rounded-lg text-slate-800 font-mono"
+                                   class="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-mono text-sm"
                                    id="cred-steam-code">
                             <button onclick="generateSteamCode()" 
-                                    class="px-4 py-2 bg-game-purple text-white rounded-lg hover:bg-game-purple/90 transition-colors text-sm font-semibold">
+                                    class="px-3 py-1.5 bg-game-purple text-white rounded-lg hover:bg-game-purple/90 transition-colors text-xs font-semibold whitespace-nowrap">
                                 Lấy mã
                             </button>
                             <button onclick="copyToClipboard('cred-steam-code')" 
-                                    class="px-4 py-2 bg-game-accent text-white rounded-lg hover:bg-game-accent-hover transition-colors text-sm hidden"
+                                    class="px-3 py-1.5 bg-game-accent text-white rounded-lg hover:bg-game-accent-hover transition-colors text-xs hidden"
                                     id="btn-copy-steam-code">
                                 Copy
                             </button>
                         </div>
                     </div>
-                    ${credentials.email ? `
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-600 mb-2">Email</label>
-                        <div class="flex items-center gap-2">
-                            <input type="text" 
-                                   value="${escapeHtml(credentials.email || '')}" 
-                                   readonly 
-                                   class="flex-1 px-4 py-2 bg-slate-50 border border-game-border rounded-lg text-slate-800 font-mono"
-                                   id="cred-email">
-                            <button onclick="copyToClipboard('cred-email')" 
-                                    class="px-4 py-2 bg-game-accent text-white rounded-lg hover:bg-game-accent-hover transition-colors text-sm">
-                                Copy
-                            </button>
-                        </div>
-                    </div>
                     ` : ''}
-                    ${credentials.email_password ? `
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-600 mb-2">Mật khẩu Email</label>
-                        <div class="flex items-center gap-2">
-                            <input type="text" 
-                                   value="${escapeHtml(credentials.email_password || '')}" 
-                                   readonly 
-                                   class="flex-1 px-4 py-2 bg-slate-50 border border-game-border rounded-lg text-slate-800 font-mono"
-                                   id="cred-email-password">
-                            <button onclick="copyToClipboard('cred-email-password')" 
-                                    class="px-4 py-2 bg-game-accent text-white rounded-lg hover:bg-game-accent-hover transition-colors text-sm">
-                                Copy
-                            </button>
+                    ${isOnline ? `
+                    <div class="pt-2 border-t border-slate-200">
+                        <p class="text-xs text-slate-500 mb-2 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
+                            Thông tin Email
+                        </p>
+                        <div class="space-y-2.5">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1.5">Email</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="text" 
+                                           value="${escapeHtml(credentials.email || '')}" 
+                                           readonly 
+                                           class="flex-1 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg text-slate-800 font-mono text-sm"
+                                           id="cred-email">
+                                    <button onclick="copyToClipboard('cred-email')" 
+                                            class="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs font-medium">
+                                        Copy
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1.5">Mật khẩu Email</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="text" 
+                                           value="${escapeHtml(credentials.email_password || '')}" 
+                                           readonly 
+                                           class="flex-1 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg text-slate-800 font-mono text-sm"
+                                           id="cred-email-password">
+                                    <button onclick="copyToClipboard('cred-email-password')" 
+                                            class="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs font-medium">
+                                        Copy
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     ` : ''}
                 </div>
                 
-                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                    <p class="text-sm text-yellow-800">
-                        <strong>Lưu ý:</strong> Vui lòng lưu thông tin này vào nơi an toàn. Thông tin chỉ hiển thị một lần.
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                    <p class="text-xs text-yellow-800 flex items-start gap-1.5">
+                        <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        <span><strong>Lưu ý:</strong> Vui lòng lưu thông tin vào nơi an toàn.</span>
                     </p>
                 </div>
                 
                 <button onclick="this.closest('.fixed').remove()" 
-                        class="w-full px-6 py-3 bg-game-accent text-white font-bold rounded-xl hover:bg-game-accent-hover transition-colors">
-                    Đã lưu thông tin
+                        class="w-full px-4 py-2.5 bg-gradient-to-r from-game-accent to-game-purple text-white font-bold rounded-lg hover:shadow-lg transition-all text-sm">
+                    ✓ Đã lưu thông tin
                 </button>
             </div>
         `;

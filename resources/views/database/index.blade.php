@@ -108,6 +108,42 @@
                 <div class="text-sm font-medium opacity-90">Payment Methods</div>
             </div>
             
+            <!-- Support Tickets (Admin only) -->
+            <a href="{{ route('database.support-tickets') }}" data-role="admin" class="role-restricted bg-gradient-to-br from-teal-500 to-cyan-600 text-white p-4 rounded-xl hover:shadow-lg transition-all duration-200 group hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-2xl">🎫</span>
+                    <span class="text-2xl sm:text-3xl font-bold">{{ $stats['support_tickets_count'] ?? 0 }}</span>
+                </div>
+                <div class="text-sm font-medium opacity-90">Support Tickets</div>
+            </a>
+            
+            <!-- Community Posts (Admin + Editor) -->
+            <a href="{{ route('database.community-posts') }}" data-role="admin,editor" class="role-restricted bg-gradient-to-br from-sky-500 to-blue-600 text-white p-4 rounded-xl hover:shadow-lg transition-all duration-200 group hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-2xl">🌐</span>
+                    <span class="text-2xl sm:text-3xl font-bold">{{ $stats['community_posts_count'] ?? 0 }}</span>
+                </div>
+                <div class="text-sm font-medium opacity-90">Community Posts</div>
+            </a>
+
+            <!-- Promotions (Admin only) -->
+            <a href="{{ route('database.promotions') }}" data-role="admin" class="role-restricted bg-gradient-to-br from-rose-500 to-pink-600 text-white p-4 rounded-xl hover:shadow-lg transition-all duration-200 group hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-2xl">🏷️</span>
+                    <span class="text-2xl sm:text-3xl font-bold">{{ $stats['promotions_count'] ?? 0 }}</span>
+                </div>
+                <div class="text-sm font-medium opacity-90">Promotions</div>
+            </a>
+
+            <!-- Coupons (Admin only) -->
+            <a href="{{ route('database.coupons') }}" data-role="admin" class="role-restricted bg-gradient-to-br from-amber-500 to-orange-600 text-white p-4 rounded-xl hover:shadow-lg transition-all duration-200 group hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-2xl">🎟️</span>
+                    <span class="text-2xl sm:text-3xl font-bold">{{ $stats['coupons_count'] ?? 0 }}</span>
+                </div>
+                <div class="text-sm font-medium opacity-90">Coupons</div>
+            </a>
+            
             <!-- Back to Home -->
             <a href="{{ route('home') }}" class="bg-gradient-to-br from-gray-500 to-gray-600 text-white p-4 rounded-xl hover:shadow-lg transition-all duration-200 group">
                 <div class="flex items-center justify-between mb-2">
@@ -156,11 +192,32 @@
                         <div class="text-xs text-gray-500">Sửa, xóa tin tức</div>
                     </div>
                 </a>
-                <a href="{{ route('database.discussions') }}" class="flex items-center gap-3 p-3 bg-pink-50 border border-pink-200 rounded-lg hover:bg-pink-100 transition-colors group sm:col-span-2">
+                <a href="{{ route('database.discussions') }}" class="flex items-center gap-3 p-3 bg-pink-50 border border-pink-200 rounded-lg hover:bg-pink-100 transition-colors group">
                     <div class="w-10 h-10 bg-pink-500 text-white rounded-lg flex items-center justify-center text-lg">💬</div>
                     <div>
                         <div class="font-semibold text-gray-800 group-hover:text-pink-600">Quản lý Discussions</div>
                         <div class="text-xs text-gray-500">Duyệt và quản lý thảo luận sản phẩm</div>
+                    </div>
+                </a>
+                <a href="{{ route('database.community-posts') }}" class="flex items-center gap-3 p-3 bg-sky-50 border border-sky-200 rounded-lg hover:bg-sky-100 transition-colors group">
+                    <div class="w-10 h-10 bg-sky-500 text-white rounded-lg flex items-center justify-center text-lg">🌐</div>
+                    <div>
+                        <div class="font-semibold text-gray-800 group-hover:text-sky-600">Quản lý Cộng đồng</div>
+                        <div class="text-xs text-gray-500">Kiểm duyệt bài viết cộng đồng</div>
+                    </div>
+                </a>
+                <a href="{{ route('database.promotions') }}" class="flex items-center gap-3 p-3 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-colors group">
+                    <div class="w-10 h-10 bg-rose-500 text-white rounded-lg flex items-center justify-center text-lg">🏷️</div>
+                    <div>
+                        <div class="font-semibold text-gray-800 group-hover:text-rose-600">Quản lý Ưu đãi</div>
+                        <div class="text-xs text-gray-500">Tạo và quản lý game giảm giá</div>
+                    </div>
+                </a>
+                <a href="{{ route('database.coupons') }}" class="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors group">
+                    <div class="w-10 h-10 bg-amber-500 text-white rounded-lg flex items-center justify-center text-lg">🎟️</div>
+                    <div>
+                        <div class="font-semibold text-gray-800 group-hover:text-amber-600">Quản lý Mã giảm giá</div>
+                        <div class="text-xs text-gray-500">Tạo và quản lý mã ưu đãi</div>
                     </div>
                 </a>
             </div>
@@ -187,11 +244,18 @@
                         <div class="text-xs text-gray-500">Sửa, xóa người dùng</div>
                     </div>
                 </a>
-                <a href="{{ route('database.recommendations') }}" class="flex items-center gap-3 p-3 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors group sm:col-span-2">
+                <a href="{{ route('database.recommendations') }}" class="flex items-center gap-3 p-3 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors group">
                     <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-500 text-white rounded-lg flex items-center justify-center text-lg">🤖</div>
                     <div>
-                        <div class="font-semibold text-gray-800 group-hover:text-purple-600">AI Recommendation System</div>
-                        <div class="text-xs text-gray-500">Train & quản lý hệ thống gợi ý sản phẩm</div>
+                        <div class="font-semibold text-gray-800 group-hover:text-purple-600">AI Recommendation</div>
+                        <div class="text-xs text-gray-500">Hệ thống gợi ý sản phẩm</div>
+                    </div>
+                </a>
+                <a href="{{ route('database.support-tickets') }}" class="flex items-center gap-3 p-3 bg-teal-50 border border-teal-200 rounded-lg hover:bg-teal-100 transition-colors group">
+                    <div class="w-10 h-10 bg-gradient-to-br from-teal-500 to-cyan-500 text-white rounded-lg flex items-center justify-center text-lg">🎫</div>
+                    <div>
+                        <div class="font-semibold text-gray-800 group-hover:text-teal-600">Hỗ trợ Tickets</div>
+                        <div class="text-xs text-gray-500">Quản lý yêu cầu hỗ trợ</div>
                     </div>
                 </a>
             </div>
@@ -236,6 +300,16 @@
                             'user_interactions' => ['desc' => 'Tương tác người dùng (AI)', 'icon' => '🤖', 'color' => 'indigo'],
                             'product_similarities' => ['desc' => 'Độ tương đồng sản phẩm (AI)', 'icon' => '🔗', 'color' => 'indigo'],
                             'user_recommendations' => ['desc' => 'Gợi ý cho người dùng (AI)', 'icon' => '🎯', 'color' => 'indigo'],
+                            'support_tickets' => ['desc' => 'Yêu cầu hỗ trợ từ người dùng', 'icon' => '🎫', 'color' => 'teal'],
+                            'community_posts' => ['desc' => 'Bài viết cộng đồng', 'icon' => '🌐', 'color' => 'sky'],
+                            'community_post_likes' => ['desc' => 'Like bài viết cộng đồng', 'icon' => '❤️', 'color' => 'red'],
+                            'community_post_comments' => ['desc' => 'Bình luận bài viết cộng đồng', 'icon' => '💬', 'color' => 'sky'],
+                            'community_comment_likes' => ['desc' => 'Like bình luận cộng đồng', 'icon' => '❤️', 'color' => 'red'],
+                            'friendships' => ['desc' => 'Quan hệ bạn bè', 'icon' => '🤝', 'color' => 'blue'],
+                            'messages' => ['desc' => 'Tin nhắn người dùng', 'icon' => '✉️', 'color' => 'violet'],
+                            'promotions' => ['desc' => 'Ưu đãi giảm giá game', 'icon' => '🏷️', 'color' => 'rose'],
+                            'promotion_product' => ['desc' => 'Game trong ưu đãi', 'icon' => '🏷️', 'color' => 'rose'],
+                            'coupons' => ['desc' => 'Mã ưu đãi giảm giá', 'icon' => '🎟️', 'color' => 'amber'],
                         ];
                     @endphp
                     @foreach($stats['tables'] as $table)
@@ -292,6 +366,22 @@
                                 @elseif(in_array($table, ['user_interactions', 'product_similarities', 'user_recommendations']))
                                     <a href="{{ route('database.recommendations') }}" class="inline-flex items-center px-2.5 py-1 text-xs font-medium text-purple-700 bg-purple-100 rounded-full hover:bg-purple-200 transition-colors">
                                         AI System
+                                    </a>
+                                @elseif($table === 'support_tickets')
+                                    <a href="{{ route('database.support-tickets') }}" class="inline-flex items-center px-2.5 py-1 text-xs font-medium text-teal-700 bg-teal-100 rounded-full hover:bg-teal-200 transition-colors">
+                                        Manage
+                                    </a>
+                                @elseif($table === 'community_posts')
+                                    <a href="{{ route('database.community-posts') }}" class="inline-flex items-center px-2.5 py-1 text-xs font-medium text-sky-700 bg-sky-100 rounded-full hover:bg-sky-200 transition-colors">
+                                        Manage
+                                    </a>
+                                @elseif($table === 'promotions' || $table === 'promotion_product')
+                                    <a href="{{ route('database.promotions') }}" class="inline-flex items-center px-2.5 py-1 text-xs font-medium text-rose-700 bg-rose-100 rounded-full hover:bg-rose-200 transition-colors">
+                                        Manage
+                                    </a>
+                                @elseif($table === 'coupons')
+                                    <a href="{{ route('database.coupons') }}" class="inline-flex items-center px-2.5 py-1 text-xs font-medium text-amber-700 bg-amber-100 rounded-full hover:bg-amber-200 transition-colors">
+                                        Manage
                                     </a>
                                 @endif
                             </div>

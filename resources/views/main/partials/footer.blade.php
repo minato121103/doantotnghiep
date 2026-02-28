@@ -54,11 +54,12 @@
             <div>
                 <h4 class="font-heading text-lg font-semibold text-slate-800 mb-4">Hỗ trợ</h4>
                 <ul class="space-y-3">
-                    <li><a href="{{ url('/faq') }}" class="text-slate-600 hover:text-game-accent transition-colors">FAQ</a></li>
-                    <li><a href="{{ url('/contact') }}" class="text-slate-600 hover:text-game-accent transition-colors">Liên hệ</a></li>
+                    <li><a href="{{ url('/support') }}" class="text-slate-600 hover:text-game-accent transition-colors">Trung tâm hỗ trợ</a></li>
+                    <li><a href="{{ url('/support') }}#faq-section" class="text-slate-600 hover:text-game-accent transition-colors">FAQ</a></li>
+                    <li><a href="{{ url('/support') }}#contact-section" class="text-slate-600 hover:text-game-accent transition-colors">Liên hệ</a></li>
                     <li><a href="{{ url('/terms') }}" class="text-slate-600 hover:text-game-accent transition-colors">Điều khoản dịch vụ</a></li>
                     <li><a href="{{ url('/privacy') }}" class="text-slate-600 hover:text-game-accent transition-colors">Chính sách bảo mật</a></li>
-                    <li><a href="{{ url('/refund') }}" class="text-slate-600 hover:text-game-accent transition-colors">Chính sách hoàn tiền</a></li>
+                    <li><a href="{{ url('/support') }}#ticket-section" class="text-slate-600 hover:text-game-accent transition-colors">Chính sách hoàn tiền</a></li>
                 </ul>
             </div>
             

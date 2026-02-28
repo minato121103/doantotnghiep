@@ -8,6 +8,7 @@ use App\Models\ProductSimple;
 use App\Models\OrderItem;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Coupon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
@@ -73,22 +74,14 @@ class OrderController extends Controller
 
         $orders = $query->paginate($perPage);
 
-        // Decrypt credentials for all orders (all orders are completed)
+        // Process credentials for all orders
         $ordersData = $orders->items();
         foreach ($ordersData as $order) {
             if ($order->items) {
                 foreach ($order->items as $item) {
                     if ($item->steam_credentials) {
-                        try {
-                            $item->steam_credentials = [
-                                'username' => Crypt::decryptString($item->steam_credentials['username']),
-                                'password' => Crypt::decryptString($item->steam_credentials['password']),
-                                'email' => $item->steam_credentials['email'] ? Crypt::decryptString($item->steam_credentials['email']) : null,
-                                'email_password' => $item->steam_credentials['email_password'] ? Crypt::decryptString($item->steam_credentials['email_password']) : null,
-                            ];
-                        } catch (\Exception $e) {
-                            // Handle decryption error - keep encrypted
-                        }
+                        // Try to decrypt (for real orders), if fails keep as-is (for seeder data)
+                        $item->steam_credentials = $this->processCredentials($item->steam_credentials);
                     }
                 }
             }
@@ -131,6 +124,7 @@ class OrderController extends Controller
             'items.*.quantity' => 'required|integer|min:1|max:10',
             'payment_method' => 'required|in:balance,banking,momo,zalopay',
             'notes' => 'nullable|string',
+            'coupon_code' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -157,21 +151,22 @@ class OrderController extends Controller
                 continue;
             }
 
-            // Parse price
             $priceStr = $game->price ?? '';
-            $amount = $this->parsePrice($priceStr);
+            $originalAmount = $this->parsePrice($priceStr);
             
-            if ($amount <= 0) {
+            if ($originalAmount <= 0) {
                 \Log::warning('Failed to parse price', [
                     'game_id' => $item['product_simple_id'],
                     'price_string' => $priceStr,
-                    'parsed_amount' => $amount
+                    'parsed_amount' => $originalAmount
                 ]);
                 $errors[] = "Item {$index}: Invalid price (price: " . ($priceStr ?: 'empty') . ")";
                 continue;
             }
 
-            // Check steam account availability
+            $sale = $game->getSalePrice();
+            $amount = $sale ? $sale['sale_price'] : $originalAmount;
+
             $availableCount = SteamAccount::hasGame($item['product_simple_id'])->count();
             if ($availableCount < $item['quantity']) {
                 $errors[] = "Item {$index}: Only {$availableCount} account(s) available, requested {$item['quantity']}";
@@ -196,36 +191,49 @@ class OrderController extends Controller
             ], 400);
         }
 
-        // Check balance if payment method is balance
+        $coupon = null;
+        $discountAmount = 0;
+        $finalTotal = $totalAmount;
+
+        if ($request->coupon_code) {
+            $coupon = Coupon::where('code', strtoupper($request->coupon_code))->first();
+            if (!$coupon || !$coupon->isValid()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Mã ưu đãi không hợp lệ hoặc đã hết hạn',
+                ], 422);
+            }
+            $discountAmount = $coupon->applyToTotal($totalAmount);
+            $finalTotal = max(0, $totalAmount - $discountAmount);
+        }
+
         if ($paymentMethod === 'balance') {
-            if ($user->balance < $totalAmount) {
+            if ($user->balance < $finalTotal) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Insufficient balance',
-                    'required' => $totalAmount,
+                    'required' => $finalTotal,
                     'available' => $user->balance
                 ], 400);
             }
         }
 
-        // Process all orders in a single transaction
         DB::beginTransaction();
         try {
             $createdOrders = [];
             $balanceBefore = $user->balance;
             $balanceAfter = $balanceBefore;
+            $isFirstOrder = true;
 
             foreach ($validatedItems as $item) {
                 for ($i = 0; $i < $item['quantity']; $i++) {
-                    // Find available steam account
                     $steamAccount = SteamAccount::hasGame($item['product_simple_id'])->first();
                     
                     if (!$steamAccount) {
                         throw new \Exception("No available steam account for game ID: {$item['product_simple_id']}");
                     }
 
-                    // Create order with completed status
-                    $order = Order::create([
+                    $orderData = [
                         'order_code' => Order::generateOrderCode(),
                         'buyer_id' => $user->id,
                         'steam_account_id' => $steamAccount->id,
@@ -236,15 +244,24 @@ class OrderController extends Controller
                         'status' => 'completed',
                         'completed_at' => now(),
                         'notes' => $notes,
-                    ]);
-
-                    // Create order item with encrypted credentials
-                    $credentials = [
-                        'username' => Crypt::encryptString($steamAccount->username),
-                        'password' => Crypt::encryptString($steamAccount->password),
-                        'email' => $steamAccount->email ? Crypt::encryptString($steamAccount->email) : null,
-                        'email_password' => $steamAccount->email_password ? Crypt::encryptString($steamAccount->email_password) : null,
+                        'coupon_id' => ($isFirstOrder && $coupon) ? $coupon->id : null,
+                        'discount_amount' => ($isFirstOrder && $coupon) ? $discountAmount : 0,
                     ];
+
+                    $order = Order::create($orderData);
+                    $isFirstOrder = false;
+
+                    // Create order item with plain text credentials
+                    $credentials = [
+                        'username' => $steamAccount->username,
+                        'password' => $steamAccount->password,
+                    ];
+                    
+                    // Include email for online accounts
+                    if ($steamAccount->email) {
+                        $credentials['email'] = $steamAccount->email;
+                        $credentials['email_password'] = $steamAccount->email_password;
+                    }
 
                     OrderItem::create([
                         'order_id' => $order->id,
@@ -269,28 +286,35 @@ class OrderController extends Controller
                 }
             }
 
-            // Process payment if balance
             if ($paymentMethod === 'balance') {
-                $balanceAfter = $balanceBefore - $totalAmount;
+                $balanceAfter = $balanceBefore - $finalTotal;
                 
                 $user->update([
                     'balance' => $balanceAfter,
                     'total_orders' => $user->total_orders + count($createdOrders),
-                    'total_spent' => $user->total_spent + $totalAmount,
+                    'total_spent' => $user->total_spent + $finalTotal,
                 ]);
 
-                // Create transaction
+                $desc = "Batch purchase: " . count($createdOrders) . " order(s)";
+                if ($coupon) {
+                    $desc .= " (coupon: {$coupon->code})";
+                }
+
                 Transaction::create([
                     'user_id' => $user->id,
                     'transaction_code' => Transaction::generateTransactionCode('PUR'),
                     'type' => 'purchase',
-                    'amount' => -$totalAmount,
+                    'amount' => -$finalTotal,
                     'balance_before' => $balanceBefore,
                     'balance_after' => $balanceAfter,
                     'status' => 'completed',
                     'payment_method' => 'balance',
-                    'description' => "Batch purchase: " . count($createdOrders) . " order(s)",
+                    'description' => $desc,
                 ]);
+            }
+
+            if ($coupon) {
+                $coupon->increment('used_count');
             }
 
             DB::commit();
@@ -306,6 +330,9 @@ class OrderController extends Controller
                 'data' => [
                     'orders' => $createdOrders,
                     'total_amount' => $totalAmount,
+                    'discount_amount' => $discountAmount,
+                    'final_total' => $finalTotal,
+                    'coupon_code' => $coupon ? $coupon->code : null,
                     'balance_before' => $balanceBefore,
                     'balance_after' => $balanceAfter,
                     'count' => count($createdOrders)
@@ -380,6 +407,22 @@ class OrderController extends Controller
         }
         
         return 0;
+    }
+
+    /**
+     * Process credentials - returns credentials as-is (plain text)
+     *
+     * @param array $credentials
+     * @return array
+     */
+    private function processCredentials(array $credentials): array
+    {
+        return [
+            'username' => $credentials['username'] ?? null,
+            'password' => $credentials['password'] ?? null,
+            'email' => $credentials['email'] ?? null,
+            'email_password' => $credentials['email_password'] ?? null,
+        ];
     }
 
     /**
@@ -470,13 +513,17 @@ class OrderController extends Controller
                 'notes' => $request->notes,
             ]);
 
-            // Create order item with encrypted credentials
+            // Create order item with plain text credentials
             $credentials = [
-                'username' => Crypt::encryptString($steamAccount->username),
-                'password' => Crypt::encryptString($steamAccount->password),
-                'email' => $steamAccount->email ? Crypt::encryptString($steamAccount->email) : null,
-                'email_password' => $steamAccount->email_password ? Crypt::encryptString($steamAccount->email_password) : null,
+                'username' => $steamAccount->username,
+                'password' => $steamAccount->password,
             ];
+            
+            // Include email for online accounts
+            if ($steamAccount->email) {
+                $credentials['email'] = $steamAccount->email;
+                $credentials['email_password'] = $steamAccount->email_password;
+            }
 
             OrderItem::create([
                 'order_id' => $order->id,
@@ -569,21 +616,11 @@ class OrderController extends Controller
             ], 403);
         }
 
-        // Decrypt credentials in order items (all orders are completed)
+        // Process credentials in order items
         if ($order->items) {
             foreach ($order->items as $item) {
                 if ($item->steam_credentials) {
-                    try {
-                        $item->steam_credentials = [
-                            'username' => Crypt::decryptString($item->steam_credentials['username']),
-                            'password' => Crypt::decryptString($item->steam_credentials['password']),
-                            'email' => $item->steam_credentials['email'] ? Crypt::decryptString($item->steam_credentials['email']) : null,
-                            'email_password' => $item->steam_credentials['email_password'] ? Crypt::decryptString($item->steam_credentials['email_password']) : null,
-                        ];
-                    } catch (\Exception $e) {
-                        // Handle decryption error - log for debugging
-                        \Log::error('Failed to decrypt credentials for order item: ' . $item->id, ['error' => $e->getMessage()]);
-                    }
+                    $item->steam_credentials = $this->processCredentials($item->steam_credentials);
                 }
             }
         }

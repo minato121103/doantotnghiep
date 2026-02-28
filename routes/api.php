@@ -13,6 +13,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProductDiscussionController;
 use App\Http\Controllers\RecommendationController;
 use App\Http\Controllers\NewsController;
+use App\Http\Controllers\CommunityController;
 
 /*
 |--------------------------------------------------------------------------
@@ -251,4 +252,126 @@ Route::prefix('news')->group(function () {
     
     // Delete a news
     Route::delete('/{id}', [NewsController::class, 'destroy']);
+});
+
+// Community API Routes
+Route::prefix('community')->group(function () {
+    // Get all community posts (public)
+    Route::get('/posts', [CommunityController::class, 'getAllPosts']);
+    
+    // Get comments for a post (public)
+    Route::get('/posts/{id}/comments', [CommunityController::class, 'getComments']);
+});
+
+// Authenticated Community Routes
+Route::middleware('auth:sanctum')->prefix('community')->group(function () {
+    // Get game groups for sidebar (needs auth to know which games user bought)
+    Route::get('/game-groups', [CommunityController::class, 'getMyGameGroups']);
+    
+    // Create a new post
+    Route::post('/posts', [CommunityController::class, 'createPost']);
+    
+    // Update a post (author only)
+    Route::put('/posts/{id}', [CommunityController::class, 'updatePost']);
+    
+    // Delete a post (author or admin/editor)
+    Route::delete('/posts/{id}', [CommunityController::class, 'deletePost']);
+    
+    // Toggle like on a post
+    Route::post('/posts/{id}/like', [CommunityController::class, 'toggleLike']);
+    
+    // Add comment to a post
+    Route::post('/posts/{id}/comments', [CommunityController::class, 'addComment']);
+    
+    // Toggle like on a comment
+    Route::post('/comments/{commentId}/like', [CommunityController::class, 'toggleCommentLike']);
+
+    // Admin: Get all posts for management
+    Route::get('/admin/posts', [CommunityController::class, 'adminGetPosts']);
+    
+    // Admin: Toggle post status
+    Route::patch('/admin/posts/{id}/toggle-status', [CommunityController::class, 'adminToggleStatus']);
+
+    // Admin: Get comments for a post
+    Route::get('/admin/posts/{postId}/comments', [CommunityController::class, 'adminGetComments']);
+    
+    // Admin: Delete a comment
+    Route::delete('/admin/comments/{commentId}', [CommunityController::class, 'adminDeleteComment']);
+});
+
+// User search - public
+Route::get('/users/search', [\App\Http\Controllers\ProfileController::class, 'searchUserByName']);
+
+// Profile API - public
+Route::get('/profile/{id}', [\App\Http\Controllers\ProfileController::class, 'getProfile']);
+
+// Profile API - authenticated
+Route::prefix('profile')->middleware('auth:sanctum')->group(function () {
+    Route::post('/update', [\App\Http\Controllers\ProfileController::class, 'updateProfile']);
+    Route::post('/avatar', [\App\Http\Controllers\ProfileController::class, 'uploadAvatar']);
+    Route::post('/cover', [\App\Http\Controllers\ProfileController::class, 'uploadCover']);
+});
+
+// Friends API
+Route::prefix('friends')->middleware('auth:sanctum')->group(function () {
+    Route::post('/request/{userId}', [\App\Http\Controllers\ProfileController::class, 'sendFriendRequest']);
+    Route::post('/accept/{friendshipId}', [\App\Http\Controllers\ProfileController::class, 'acceptFriendRequest']);
+    Route::delete('/remove/{friendshipId}', [\App\Http\Controllers\ProfileController::class, 'removeFriend']);
+    Route::get('/requests', [\App\Http\Controllers\ProfileController::class, 'getFriendRequests']);
+    Route::get('/chat-list', [\App\Http\Controllers\ProfileController::class, 'getFriendsForChat']);
+    // Admin: get all users for chat
+    Route::get('/all-users', [\App\Http\Controllers\ProfileController::class, 'getAllUsersForChat']);
+});
+
+// Messages API
+Route::prefix('messages')->middleware('auth:sanctum')->group(function () {
+    Route::get('/conversations', [\App\Http\Controllers\ProfileController::class, 'getConversations']);
+    Route::get('/unread', [\App\Http\Controllers\ProfileController::class, 'getUnreadCount']);
+    Route::get('/{userId}', [\App\Http\Controllers\ProfileController::class, 'getMessages']);
+    Route::post('/{userId}', [\App\Http\Controllers\ProfileController::class, 'sendMessage']);
+});
+
+// Support Tickets API
+Route::prefix('support-tickets')->group(function () {
+    // Public: submit a ticket (optionally authenticated)
+    Route::post('/', [\App\Http\Controllers\SupportTicketController::class, 'store']);
+
+    // Admin: manage tickets
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/', [\App\Http\Controllers\SupportTicketController::class, 'index']);
+        Route::get('/{id}', [\App\Http\Controllers\SupportTicketController::class, 'show']);
+        Route::put('/{id}', [\App\Http\Controllers\SupportTicketController::class, 'update']);
+        Route::delete('/{id}', [\App\Http\Controllers\SupportTicketController::class, 'destroy']);
+    });
+});
+
+// Promotions API (admin)
+Route::prefix('promotions')->group(function () {
+    Route::get('/', [\App\Http\Controllers\PromotionController::class, 'index']);
+    Route::post('/', [\App\Http\Controllers\PromotionController::class, 'store']);
+    Route::get('/{id}', [\App\Http\Controllers\PromotionController::class, 'show']);
+    Route::put('/{id}', [\App\Http\Controllers\PromotionController::class, 'update']);
+    Route::delete('/{id}', [\App\Http\Controllers\PromotionController::class, 'destroy']);
+    Route::delete('/{id}/products/{productId}', [\App\Http\Controllers\PromotionController::class, 'removeProduct']);
+});
+
+// Coupons API (admin + validate for users)
+Route::prefix('coupons')->group(function () {
+    Route::get('/', [\App\Http\Controllers\CouponController::class, 'index']);
+    Route::post('/', [\App\Http\Controllers\CouponController::class, 'store']);
+    Route::post('/validate', [\App\Http\Controllers\CouponController::class, 'validate_coupon']);
+    Route::get('/{id}', [\App\Http\Controllers\CouponController::class, 'show']);
+    Route::put('/{id}', [\App\Http\Controllers\CouponController::class, 'update']);
+    Route::delete('/{id}', [\App\Http\Controllers\CouponController::class, 'destroy']);
+});
+
+// Chatbot API
+Route::prefix('chatbot')->group(function () {
+    Route::post('/message', [\App\Http\Controllers\ChatbotController::class, 'sendMessage']);
+    Route::post('/feedback', [\App\Http\Controllers\ChatbotController::class, 'submitFeedback']);
+    Route::get('/suggestions', [\App\Http\Controllers\ChatbotController::class, 'getSuggestions']);
+    Route::get('/history', [\App\Http\Controllers\ChatbotController::class, 'getHistory']);
+    Route::get('/messages', [\App\Http\Controllers\ChatbotController::class, 'getMessages']);
+    Route::post('/new', [\App\Http\Controllers\ChatbotController::class, 'newConversation']);
+    Route::get('/stats', [\App\Http\Controllers\ChatbotController::class, 'getStats']);
 });

@@ -11,6 +11,10 @@ use App\Models\Transaction;
 use App\Models\SteamAccount;
 use App\Models\ProductDiscussion;
 use App\Models\PaymentMethod;
+use App\Models\SupportTicket;
+use App\Models\CommunityPost;
+use App\Models\Promotion;
+use App\Models\Coupon;
 use Illuminate\Support\Facades\DB;
 
 class DatabaseController extends Controller
@@ -28,6 +32,10 @@ class DatabaseController extends Controller
             'steam_accounts_count' => SteamAccount::count(),
             'discussions_count' => ProductDiscussion::count(),
             'payment_methods_count' => PaymentMethod::count(),
+            'support_tickets_count' => SupportTicket::count(),
+            'community_posts_count' => CommunityPost::count(),
+            'promotions_count' => Promotion::count(),
+            'coupons_count' => Coupon::count(),
             'tables' => $this->getTablesList()
         ];
         
@@ -139,5 +147,49 @@ class DatabaseController extends Controller
         $data = DB::table($tableName)->limit(5)->get();
         
         return view('database.table-structure', compact('tableName', 'columns', 'data'));
+    }
+
+    // Support Tickets Management
+    public function supportTickets()
+    {
+        return view('database.support.tickets');
+    }
+
+    // Community Posts Management
+    public function communityPosts()
+    {
+        return view('database.community.posts');
+    }
+
+    // Promotions Management
+    public function promotions()
+    {
+        return view('database.promotion.list');
+    }
+
+    public function createPromotion()
+    {
+        return view('database.promotion.create');
+    }
+
+    public function editPromotion($id)
+    {
+        return view('database.promotion.edit', ['id' => $id]);
+    }
+
+    // Coupons Management
+    public function coupons()
+    {
+        return view('database.coupon.list');
+    }
+
+    public function createCoupon()
+    {
+        return view('database.coupon.create');
+    }
+
+    public function editCoupon($id)
+    {
+        return view('database.coupon.edit', ['id' => $id]);
     }
 } 

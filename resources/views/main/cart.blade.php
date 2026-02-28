@@ -32,6 +32,25 @@
     <!-- Cart Content -->
     <section class="py-8">
         <div class="container mx-auto px-4">
+            <!-- Mã ưu đãi (phía trên) -->
+            <div id="cart-coupons-bar" class="mb-6">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-heading text-lg font-bold text-slate-800">Mã ưu đãi</h3>
+                    <button type="button" id="view-all-coupons-btn" class="hidden text-sm font-semibold text-game-accent hover:underline" onclick="openAllCouponsModal()">Xem tất cả</button>
+                </div>
+                <div id="cart-coupons-list" class="flex flex-wrap gap-2">
+                    <div class="text-slate-500 text-sm py-2">Đang tải mã ưu đãi...</div>
+                </div>
+                <div id="cart-coupon-detail" class="hidden mt-3 p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700">
+                    <div class="flex items-start justify-between gap-2">
+                        <div id="cart-coupon-detail-content"></div>
+                        <button type="button" onclick="closeCouponDetail()" class="flex-shrink-0 p-1 text-slate-400 hover:text-slate-600 rounded" title="Đóng">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div class="flex flex-col lg:flex-row gap-8">
                 <!-- Cart Items -->
                 <div class="lg:w-2/3">
@@ -60,7 +79,7 @@
 
                 <!-- Cart Summary -->
                 <div class="lg:w-1/3">
-                    <div class="bg-white rounded-2xl border border-game-border p-6 sticky top-24">
+                    <div class="bg-white rounded-2xl border border-game-border p-6 sticky top-36">
                         <h3 class="font-heading text-xl font-bold text-slate-800 mb-6">Tóm tắt đơn hàng</h3>
                         
                         <!-- Summary Details -->
@@ -69,6 +88,33 @@
                                 <span>Tạm tính</span>
                                 <span id="subtotal" class="font-semibold text-slate-800">0đ</span>
                             </div>
+
+                            <!-- Coupon Section -->
+                            <div class="border-t border-game-border pt-4">
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Mã ưu đãi</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="coupon-input" placeholder="Nhập mã..." class="flex-1 px-3 py-2 border border-game-border rounded-lg text-sm focus:ring-2 focus:ring-game-accent focus:border-transparent uppercase" style="font-family: monospace;">
+                                    <button id="apply-coupon-btn" onclick="applyCoupon()" class="px-4 py-2 bg-game-accent text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-all">Áp dụng</button>
+                                </div>
+                                <div id="coupon-message" class="mt-2 text-sm hidden"></div>
+                                <div id="coupon-applied" class="mt-2 hidden">
+                                    <div class="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                                        <div class="flex items-center gap-2">
+                                            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                            <span class="text-sm text-green-700 font-medium" id="coupon-applied-text"></span>
+                                        </div>
+                                        <button onclick="removeCoupon()" class="text-green-600 hover:text-red-500 transition-colors">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="discount-row" class="hidden flex justify-between text-green-600">
+                                <span>Giảm giá</span>
+                                <span id="discount-amount" class="font-semibold">-0đ</span>
+                            </div>
+
                             <div class="border-t border-game-border pt-4">
                                 <div class="flex justify-between items-center">
                                     <span class="font-heading text-lg font-bold text-slate-800">Tổng cộng</span>
@@ -101,6 +147,34 @@
             </div>
         </div>
     </section>
+
+    <!-- Modal: Tất cả mã ưu đãi -->
+    <div id="all-coupons-modal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4" onclick="if(event.target===this) closeAllCouponsModal()">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden shadow-2xl flex flex-col">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+                <h3 class="font-heading text-xl font-bold text-slate-800">Tất cả mã ưu đãi</h3>
+                <button type="button" onclick="closeAllCouponsModal()" class="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                    <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="overflow-y-auto flex-1 p-4">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-slate-600 border-b border-slate-200">
+                        <tr>
+                            <th class="py-3 font-semibold">Mã</th>
+                            <th class="py-3 font-semibold">Giảm giá</th>
+                            <th class="py-3 font-semibold">Đơn tối thiểu</th>
+                            <th class="py-3 font-semibold">Hạn dùng</th>
+                            <th class="py-3 font-semibold w-20"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="all-coupons-table-body" class="text-slate-700">
+                    </tbody>
+                </table>
+                <div id="all-coupons-empty" class="hidden text-center py-8 text-slate-500">Chưa có mã ưu đãi nào.</div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
@@ -109,42 +183,165 @@
     const GAME_BASE_URL = '{{ url("/game") }}';
     const API_BASE_URL = '{{ url("/api") }}';
 
-    // Load cart from localStorage
+    let productPromoData = {};
+    let appliedCoupon = null;
+    let activeCouponsList = [];
+    const COUPONS_PREVIEW_COUNT = 4;
+
     function getCart() {
         return JSON.parse(localStorage.getItem('cart') || '[]');
     }
 
-    // Save cart to localStorage
+    function couponValueText(c) {
+        if (c.type === 'percent') return 'Giảm ' + (parseFloat(c.value) || 0) + '%';
+        return 'Giảm ' + formatPrice(parseFloat(c.value) || 0);
+    }
+
+    function couponMinOrderText(c) {
+        const min = parseFloat(c.min_order_amount) || 0;
+        return min > 0 ? 'Đơn tối thiểu ' + formatPrice(min) : '—';
+    }
+
+    function couponValidText(c) {
+        if (!c.ends_at) return '—';
+        const d = new Date(c.ends_at);
+        return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    function couponConditionTooltip(c) {
+        const parts = ['Điều kiện: ' + couponValueText(c)];
+        const min = couponMinOrderText(c);
+        if (min !== '—') parts.push(min);
+        parts.push('Hạn dùng: ' + couponValidText(c));
+        return parts.join(' | ');
+    }
+
+    function couponConditionHtml(c) {
+        return '<p class="font-semibold text-slate-800 mb-1">Mã <span class="font-mono">' + escapeHtml(c.code || '') + '</span></p>' +
+            '<ul class="list-disc list-inside space-y-0.5 text-slate-600">' +
+            '<li>' + couponValueText(c) + '</li>' +
+            '<li>Đơn tối thiểu: ' + couponMinOrderText(c) + '</li>' +
+            '<li>Hạn dùng: ' + couponValidText(c) + '</li>' +
+            '</ul>';
+    }
+
+    function showCouponDetail(code) {
+        const c = activeCouponsList.find(x => (x.code || '').toUpperCase() === (code || '').toUpperCase());
+        if (!c) return;
+        const wrap = document.getElementById('cart-coupon-detail');
+        const content = document.getElementById('cart-coupon-detail-content');
+        if (!wrap || !content) return;
+        content.innerHTML = couponConditionHtml(c);
+        wrap.classList.remove('hidden');
+    }
+
+    function closeCouponDetail() {
+        const wrap = document.getElementById('cart-coupon-detail');
+        if (wrap) wrap.classList.add('hidden');
+    }
+
+    async function loadActiveCoupons() {
+        try {
+            const res = await fetch(`${API_BASE_URL}/coupons?status=active&per_page=100`, { headers: { 'Accept': 'application/json' } });
+            const result = await res.json();
+            const list = (result.data && result.data.data) ? result.data.data : [];
+            activeCouponsList = Array.isArray(list) ? list : [];
+            renderCouponsBar();
+        } catch (e) {
+            console.error('Load coupons error:', e);
+            document.getElementById('cart-coupons-list').innerHTML = '<span class="text-slate-500 text-sm">Không tải được mã ưu đãi.</span>';
+        }
+    }
+
+    function renderCouponsBar() {
+        const listEl = document.getElementById('cart-coupons-list');
+        const viewAllBtn = document.getElementById('view-all-coupons-btn');
+        if (!listEl) return;
+        if (activeCouponsList.length === 0) {
+            listEl.innerHTML = '<span class="text-slate-500 text-sm">Hiện không có mã ưu đãi.</span>';
+            viewAllBtn.classList.add('hidden');
+            return;
+        }
+        const preview = activeCouponsList.slice(0, COUPONS_PREVIEW_COUNT);
+        const safeCode = (code) => (code || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        listEl.innerHTML = preview.map(c => {
+            const code = c.code || '';
+            const tip = escapeHtml(couponConditionTooltip(c)).replace(/"/g, '&quot;');
+            return `<button type="button" onclick="useCouponCode('${safeCode(code)}')" class="inline-flex items-center gap-2 px-4 py-2 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 font-semibold text-sm hover:bg-rose-100 transition-colors">
+                <span class="font-mono">${escapeHtml(code)}</span>
+                <span class="text-rose-600">${couponValueText(c)}</span>
+                <span data-coupon-info role="button" tabindex="0" onclick="event.preventDefault();event.stopPropagation();showCouponDetail('${safeCode(code)}')" title="${tip}" class="ml-0.5 w-6 h-6 flex items-center justify-center rounded-full bg-rose-200/60 hover:bg-rose-200 text-rose-600 hover:text-rose-800 transition-colors flex-shrink-0" aria-label="Xem điều kiện">
+                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+                </span>
+            </button>`;
+        }).join('');
+        if (activeCouponsList.length > COUPONS_PREVIEW_COUNT) {
+            viewAllBtn.classList.remove('hidden');
+        } else {
+            viewAllBtn.classList.add('hidden');
+        }
+    }
+
+    function useCouponCode(code) {
+        const input = document.getElementById('coupon-input');
+        if (input) {
+            input.value = code;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        applyCoupon();
+        closeAllCouponsModal();
+    }
+
+    function openAllCouponsModal() {
+        const tbody = document.getElementById('all-coupons-table-body');
+        const emptyEl = document.getElementById('all-coupons-empty');
+        if (!tbody) return;
+        if (activeCouponsList.length === 0) {
+            tbody.innerHTML = '';
+            emptyEl.classList.remove('hidden');
+        } else {
+            emptyEl.classList.add('hidden');
+            tbody.innerHTML = activeCouponsList.map(c => `
+                <tr class="border-b border-slate-100 hover:bg-slate-50">
+                    <td class="py-3 font-mono font-semibold text-slate-800">${escapeHtml(c.code || '')}</td>
+                    <td class="py-3">${couponValueText(c)}</td>
+                    <td class="py-3 text-slate-600">${couponMinOrderText(c)}</td>
+                    <td class="py-3 text-slate-600">${couponValidText(c)}</td>
+                    <td class="py-3">
+                        <button type="button" onclick="useCouponCode('${(c.code || '').replace(/'/g, "\\'")}')" class="px-3 py-1.5 bg-game-accent text-white text-xs font-semibold rounded-lg hover:opacity-90">Áp dụng</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        document.getElementById('all-coupons-modal').classList.remove('hidden');
+        document.getElementById('all-coupons-modal').classList.add('flex');
+    }
+
+    function closeAllCouponsModal() {
+        document.getElementById('all-coupons-modal').classList.add('hidden');
+        document.getElementById('all-coupons-modal').classList.remove('flex');
+    }
+
     function saveCart(cart) {
         localStorage.setItem('cart', JSON.stringify(cart));
         updateCartCount();
     }
 
-    // Update cart count in header
     function updateCartCount() {
         const cart = getCart();
         const cartCount = document.getElementById('cart-count');
         if (cartCount) {
             const total = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
             cartCount.textContent = total;
-            if (total > 0) {
-                cartCount.classList.remove('hidden');
-            } else {
-                cartCount.classList.add('hidden');
-            }
+            total > 0 ? cartCount.classList.remove('hidden') : cartCount.classList.add('hidden');
         }
     }
 
-    // Extract price number from price string
     function extractPriceNumber(priceStr) {
         if (!priceStr) return 0;
-        
-        // Extract prices with currency symbol (đ or ₫) - similar to extractPrices in other files
         const priceRegex = /[\d.,]+\s*[₫đ]/gi;
         const prices = priceStr.match(priceRegex);
-        
         if (!prices || prices.length === 0) {
-            // Fallback: try to extract any number if no currency symbol found
             const numberRegex = /[\d.,]+/g;
             const numbers = priceStr.match(numberRegex);
             if (numbers && numbers.length > 0) {
@@ -153,64 +350,74 @@
             }
             return 0;
         }
-        
-        // Get the last price (current price) - remove currency symbol and parse
         const lastPrice = prices[prices.length - 1].trim();
-        // Remove currency symbol and parse number
         const priceNumber = lastPrice.replace(/[₫đ\s]/gi, '').replace(/\./g, '').replace(',', '.');
         return parseFloat(priceNumber) || 0;
     }
 
-    // Format price
     function formatPrice(amount) {
         if (amount === 0) return '0đ';
-        return new Intl.NumberFormat('vi-VN').format(amount) + 'đ';
+        return new Intl.NumberFormat('vi-VN').format(Math.round(amount)) + 'đ';
     }
 
-    // Extract prices from price string (similar to extractPrices in other files)
-    function extractPrices(priceStr) {
-        if (!priceStr) return { original: null, current: null };
-        
-        const priceRegex = /[\d.,]+\s*[₫đ]/gi;
-        const prices = priceStr.match(priceRegex);
-        
-        if (!prices || prices.length === 0) {
-            return { original: null, current: priceStr.replace(/Giá gốc là:|Giá hiện tại là:/gi, '').trim() };
+    function getItemEffectivePrice(item) {
+        const promo = productPromoData[item.id];
+        if (promo && promo.sale_price) {
+            return promo.sale_price;
         }
-        
-        if (prices.length === 1) {
-            return { original: null, current: prices[0].trim() };
-        }
-        
-        return {
-            original: prices[0].trim(),
-            current: prices[prices.length - 1].trim()
-        };
+        return extractPriceNumber(item.price);
     }
 
-    // Get price display HTML (with original price if discounted)
-    function getPriceDisplay(priceStr) {
-        if (!priceStr) return '<span class="text-game-accent font-bold text-lg">Liên hệ</span>';
-        
-        const prices = extractPrices(priceStr);
-        
-        if (!prices.current) {
-            return '<span class="text-game-accent font-bold text-lg">Liên hệ</span>';
-        }
-        
-        if (prices.original && prices.original !== prices.current) {
-            return `
-                <div class="flex flex-col">
-                    <span class="text-slate-400 line-through text-sm">${escapeHtml(prices.original)}</span>
-                    <span class="text-game-accent font-bold text-lg">${escapeHtml(prices.current)}</span>
+    function getPriceDisplayForItem(item) {
+        const promo = productPromoData[item.id];
+        if (promo && promo.sale_price) {
+            const originalPrice = extractPriceNumber(item.price);
+            return `<div class="flex flex-col">
+                <span class="text-slate-400 line-through text-sm">${formatPrice(originalPrice)}</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-game-accent font-bold text-lg">${formatPrice(promo.sale_price)}</span>
+                    <span class="px-1.5 py-0.5 bg-red-100 text-red-600 text-xs font-bold rounded">-${promo.discount_percent}%</span>
                 </div>
-            `;
+            </div>`;
         }
-        
-        return `<span class="text-game-accent font-bold text-lg">${escapeHtml(prices.current)}</span>`;
+        if (!item.price) return '<span class="text-game-accent font-bold text-lg">Liên hệ</span>';
+        const priceRegex = /[\d.,]+\s*[₫đ]/gi;
+        const prices = item.price.match(priceRegex);
+        if (prices && prices.length >= 2) {
+            return `<div class="flex flex-col">
+                <span class="text-slate-400 line-through text-sm">${escapeHtml(prices[0].trim())}</span>
+                <span class="text-game-accent font-bold text-lg">${escapeHtml(prices[prices.length-1].trim())}</span>
+            </div>`;
+        }
+        return `<span class="text-game-accent font-bold text-lg">${formatPrice(extractPriceNumber(item.price))}</span>`;
     }
 
-    // Render cart items
+    async function fetchPromoData() {
+        const cart = getCart();
+        if (cart.length === 0) return;
+        const ids = cart.map(item => item.id);
+        try {
+            const promises = ids.map(id =>
+                fetch(`${API_BASE_URL}/products/${id}`, { headers: { 'Accept': 'application/json' }})
+                    .then(r => r.json())
+                    .catch(() => null)
+            );
+            const results = await Promise.all(promises);
+            results.forEach(r => {
+                if (r && r.success && r.data) {
+                    const d = r.data;
+                    if (d.sale_price) {
+                        productPromoData[d.id] = {
+                            sale_price: d.sale_price,
+                            discount_percent: d.discount_percent,
+                            promotion_name: d.promotion_name,
+                        };
+                    }
+                }
+            });
+        } catch (e) { console.error(e); }
+    }
+
     function renderCartItems() {
         const cart = getCart();
         const container = document.getElementById('cart-items-container');
@@ -221,7 +428,7 @@
             container.innerHTML = '';
             emptyState.classList.remove('hidden');
             checkoutBtn.disabled = true;
-            updateSummary(0);
+            updateSummary(0, 0);
             updateCartCount();
             return;
         }
@@ -230,20 +437,17 @@
         checkoutBtn.disabled = false;
 
         container.innerHTML = cart.map((item, index) => {
-            const price = extractPriceNumber(item.price);
+            const price = getItemEffectivePrice(item);
             const subtotal = price * (item.quantity || 1);
 
             return `
                 <div class="bg-white rounded-xl border border-game-border p-4 hover:shadow-lg transition-all card-hover" data-item-id="${item.id}">
                     <div class="flex gap-4">
-                        <!-- Product Image -->
                         <a href="${GAME_BASE_URL}/${item.id}" class="flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden border border-game-border">
                             <img src="${item.image || 'https://via.placeholder.com/150x150?text=Game'}" 
                                  alt="${escapeHtml(item.title)}" 
                                  class="w-full h-full object-cover">
                         </a>
-
-                        <!-- Product Info -->
                         <div class="flex-1 min-w-0">
                             <div class="flex justify-between items-start mb-2">
                                 <div class="flex-1 min-w-0">
@@ -257,14 +461,10 @@
                                     </svg>
                                 </button>
                             </div>
-
-                            <!-- Price and Quantity -->
                             <div class="flex items-center justify-between mt-4">
                                 <div class="flex flex-col">
-                                    ${getPriceDisplay(item.price)}
+                                    ${getPriceDisplayForItem(item)}
                                 </div>
-                                
-                                <!-- Quantity Controls -->
                                 <div class="flex items-center gap-3">
                                     <button onclick="updateQuantity(${index}, -1)" class="w-8 h-8 flex items-center justify-center border border-game-border rounded-lg hover:border-game-accent hover:bg-game-accent/10 transition-colors">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -279,8 +479,6 @@
                                     </button>
                                 </div>
                             </div>
-
-                            <!-- Subtotal -->
                             <div class="mt-2 text-right">
                                 <span class="text-slate-500 text-sm">Thành tiền: </span>
                                 <span class="font-bold text-slate-800">${formatPrice(subtotal)}</span>
@@ -291,66 +489,117 @@
             `;
         }).join('');
 
-        // After rendering items, update summary & cart count
         updateCartSummary();
         updateCartCount();
     }
 
-    // Update quantity
     function updateQuantity(index, change) {
         const cart = getCart();
         if (index < 0 || index >= cart.length) return;
-
         cart[index].quantity = (cart[index].quantity || 1) + change;
-        
-        if (cart[index].quantity <= 0) {
-            cart.splice(index, 1);
-        }
-
+        if (cart[index].quantity <= 0) cart.splice(index, 1);
         saveCart(cart);
-        // Re-render items and update summary + cart icon count
         renderCartItems();
-        updateCartSummary();
-        updateCartCount();
     }
 
-    // Remove item
     function removeItem(index) {
         if (!confirm('Bạn có chắc muốn xóa sản phẩm này khỏi giỏ hàng?')) return;
-
         const cart = getCart();
         if (index < 0 || index >= cart.length) return;
-
         cart.splice(index, 1);
         saveCart(cart);
+        removeCoupon();
         renderCartItems();
-        updateCartSummary();
-        updateCartCount();
     }
 
-    // Update summary
-    function updateSummary(total) {
-        document.getElementById('subtotal').textContent = formatPrice(total);
-        document.getElementById('total').textContent = formatPrice(total);
-    }
-
-    // Calculate total
     function calculateTotal() {
         const cart = getCart();
         let total = 0;
-
         cart.forEach(item => {
-            const price = extractPriceNumber(item.price);
-            total += price * (item.quantity || 1);
+            total += getItemEffectivePrice(item) * (item.quantity || 1);
         });
-
         return total;
     }
 
-    // Calculate and update summary
+    function updateSummary(subtotal, discount) {
+        document.getElementById('subtotal').textContent = formatPrice(subtotal);
+        const discountRow = document.getElementById('discount-row');
+        if (discount > 0) {
+            discountRow.classList.remove('hidden');
+            document.getElementById('discount-amount').textContent = '-' + formatPrice(discount);
+        } else {
+            discountRow.classList.add('hidden');
+        }
+        document.getElementById('total').textContent = formatPrice(Math.max(0, subtotal - discount));
+    }
+
     function updateCartSummary() {
+        const subtotal = calculateTotal();
+        const discount = appliedCoupon ? appliedCoupon.discount_amount : 0;
+        updateSummary(subtotal, discount);
+    }
+
+    async function applyCoupon() {
+        const code = document.getElementById('coupon-input').value.trim();
+        const msgEl = document.getElementById('coupon-message');
+        const appliedEl = document.getElementById('coupon-applied');
+        const inputEl = document.getElementById('coupon-input');
+        const btnEl = document.getElementById('apply-coupon-btn');
+
+        msgEl.classList.add('hidden');
+        appliedEl.classList.add('hidden');
+
+        if (!code) {
+            msgEl.textContent = 'Vui lòng nhập mã ưu đãi';
+            msgEl.className = 'mt-2 text-sm text-red-500';
+            msgEl.classList.remove('hidden');
+            return;
+        }
+
         const total = calculateTotal();
-        updateSummary(total);
+        btnEl.disabled = true;
+        btnEl.textContent = '...';
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/coupons/validate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ code, total }),
+            });
+            const json = await res.json();
+
+            if (json.success && json.data) {
+                appliedCoupon = json.data;
+                document.getElementById('coupon-applied-text').textContent = `Mã ${json.data.code}: -${formatPrice(json.data.discount_amount)}`;
+                appliedEl.classList.remove('hidden');
+                inputEl.disabled = true;
+                btnEl.classList.add('hidden');
+                updateCartSummary();
+            } else {
+                msgEl.textContent = json.message || 'Mã không hợp lệ';
+                msgEl.className = 'mt-2 text-sm text-red-500';
+                msgEl.classList.remove('hidden');
+                appliedCoupon = null;
+                updateCartSummary();
+            }
+        } catch (e) {
+            msgEl.textContent = 'Lỗi kết nối';
+            msgEl.className = 'mt-2 text-sm text-red-500';
+            msgEl.classList.remove('hidden');
+        }
+
+        btnEl.disabled = false;
+        btnEl.textContent = 'Áp dụng';
+    }
+
+    function removeCoupon() {
+        appliedCoupon = null;
+        document.getElementById('coupon-applied').classList.add('hidden');
+        document.getElementById('coupon-message').classList.add('hidden');
+        document.getElementById('coupon-input').disabled = false;
+        document.getElementById('coupon-input').value = '';
+        document.getElementById('apply-coupon-btn').classList.remove('hidden');
+        updateCartSummary();
     }
 
     // Escape HTML
@@ -380,8 +629,11 @@
             return;
         }
 
-        // Confirm checkout
-        if (!confirm(`Bạn có chắc muốn thanh toán ${cart.length} sản phẩm với tổng tiền ${formatPrice(calculateTotal())}?`)) {
+        const subtotal = calculateTotal();
+        const discount = appliedCoupon ? appliedCoupon.discount_amount : 0;
+        const finalTotal = Math.max(0, subtotal - discount);
+
+        if (!confirm(`Bạn có chắc muốn thanh toán ${cart.length} sản phẩm với tổng tiền ${formatPrice(finalTotal)}?`)) {
             return;
         }
 
@@ -408,18 +660,22 @@
                 body: JSON.stringify({
                     items: items,
                     payment_method: 'balance',
-                    notes: 'Mua từ giỏ hàng'
+                    notes: 'Mua từ giỏ hàng',
+                    coupon_code: appliedCoupon ? appliedCoupon.code : null
                 })
             });
 
             const result = await response.json();
 
             if (result.success && result.data) {
-                const { orders, total_amount, balance_after } = result.data;
+                const { orders, final_total, total_amount, balance_after, discount_amount: serverDiscount, coupon_code: usedCoupon } = result.data;
                 
                 console.log('Checkout successful:', {
                     ordersCount: orders.length,
                     totalAmount: total_amount,
+                    finalTotal: final_total,
+                    discount: serverDiscount,
+                    coupon: usedCoupon,
                     balanceAfter: balance_after
                 });
                 
@@ -430,8 +686,7 @@
                 localStorage.removeItem('cart');
                 updateCartCount();
                 
-                // Show success notification with modal
-                showSuccessModal(orders.length, total_amount);
+                showSuccessModal(orders.length, final_total || total_amount, serverDiscount, usedCoupon);
                 
                 // Redirect to orders page after 3 seconds
                 setTimeout(() => {
@@ -620,8 +875,11 @@
         return new Intl.NumberFormat('vi-VN').format(amount) + ' đ';
     }
 
-    // Show success modal
-    function showSuccessModal(orderCount, totalAmount = null) {
+    function showSuccessModal(orderCount, totalAmount = null, discountAmt = 0, couponCode = null) {
+        let discountHtml = '';
+        if (discountAmt > 0 && couponCode) {
+            discountHtml = `<p class="text-green-600 mb-1">Mã ưu đãi <span class="font-bold">${escapeHtml(couponCode)}</span>: -${formatPrice(discountAmt)}</p>`;
+        }
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4';
         modal.innerHTML = `
@@ -635,7 +893,8 @@
                 <p class="text-slate-600 mb-2">
                     Đã tạo thành công <span class="font-bold text-game-accent">${orderCount}</span> đơn hàng.
                 </p>
-                ${totalAmount ? `<p class="text-slate-600 mb-6">Tổng tiền: <span class="font-bold text-game-accent">${formatPrice(totalAmount)}</span></p>` : ''}
+                ${discountHtml}
+                ${totalAmount ? `<p class="text-slate-600 mb-6">Tổng thanh toán: <span class="font-bold text-game-accent">${formatPrice(totalAmount)}</span></p>` : ''}
                 <p class="text-slate-500 text-sm mb-6">
                     Tài khoản game đã được lưu và có thể xem trong phần đơn hàng.
                 </p>
@@ -665,10 +924,10 @@
         }, 3000);
     }
 
-    // Initialize cart on page load
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+        loadActiveCoupons();
+        await fetchPromoData();
         renderCartItems();
-        updateCartSummary();
         updateCartCount();
     });
 </script>

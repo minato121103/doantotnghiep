@@ -532,40 +532,529 @@ class RecommendationService
     }
 
     /**
-     * Get recommendations for a user
+     * Get personalized recommendations for a user
+     * 
+     * IMPROVED ALGORITHM:
+     * 1. Analyze purchase history → Extract category preferences (STRONGEST signal)
+     * 2. Recent hot behavior → Products user is actively interested in
+     * 3. Category-based recommendations → Products from preferred categories
+     * 4. Similar products → Based on purchase + interaction history
+     * 5. Popular fallback → For new users or when not enough data
      */
     public function getUserRecommendations(int $userId, int $limit = 10): array
     {
-        $cacheKey = "user_recommendations_{$userId}";
+        $cacheKey = "user_recommendations_{$userId}_{$limit}";
         
-        return Cache::remember($cacheKey, now()->addHours(6), function () use ($userId, $limit) {
-            // Check if user has personalized recommendations
-            $recommendations = DB::table('user_recommendations')
-                ->join('product_simple', 'user_recommendations.product_id', '=', 'product_simple.id')
-                ->where('user_recommendations.user_id', $userId)
-                ->orderBy('user_recommendations.rank')
-                ->limit($limit)
-                ->select('product_simple.*', 'user_recommendations.score', 'user_recommendations.algorithm')
-                ->get()
+        // Very short cache (30 seconds) for real-time responsiveness
+        return Cache::remember($cacheKey, now()->addSeconds(30), function () use ($userId, $limit) {
+            
+            $recommendations = [];
+            $usedProductIds = [];
+            
+            // Get all purchased product IDs to exclude from recommendations
+            $purchasedProductIds = DB::table('orders')
+                ->where('buyer_id', $userId)
+                ->where('status', 'completed')
+                ->pluck('product_simple_id')
                 ->toArray();
+            
+            $usedProductIds = $purchasedProductIds;
 
-            // If no personalized recommendations, return popular items
-            if (empty($recommendations)) {
-                $popularIds = Cache::get('popular_recommendations', []);
-                
-                if (!empty($popularIds)) {
-                    $recommendations = ProductSimple::whereIn('id', array_slice($popularIds, 0, $limit))
-                        ->get()
-                        ->map(function ($product) {
-                            $product->score = 0.5;
-                            $product->algorithm = 'popular';
-                            return $product;
-                        })
-                        ->toArray();
+            // ========================================
+            // STEP 1A: REALTIME CATEGORY ANALYSIS (Last 2 hours)
+            // Analyze what categories user is browsing RIGHT NOW
+            // This is the STRONGEST signal for immediate recommendations
+            // ========================================
+            $realtimeCategoryStats = DB::table('user_product_interactions')
+                ->join('product_simple', 'user_product_interactions.product_id', '=', 'product_simple.id')
+                ->where('user_product_interactions.user_id', $userId)
+                ->where('user_product_interactions.created_at', '>=', now()->subHours(2))
+                ->whereNotNull('product_simple.category')
+                ->select(
+                    'product_simple.category',
+                    DB::raw('SUM(user_product_interactions.interaction_value) as total_score'),
+                    DB::raw('COUNT(*) as view_count'),
+                    DB::raw('MAX(user_product_interactions.created_at) as last_viewed')
+                )
+                ->groupBy('product_simple.category')
+                ->orderByDesc('total_score')
+                ->orderByDesc('view_count')
+                ->limit(5)
+                ->get();
+            
+            // Build realtime category scores - heavily weighted
+            $realtimeCategoryScores = [];
+            foreach ($realtimeCategoryStats as $index => $stat) {
+                // High base score + bonus for multiple views + recency bonus
+                $score = 150 - ($index * 15);
+                $score += min($stat->view_count * 10, 50); // Bonus for repeated views (max 50)
+                $score += min($stat->total_score * 5, 30);  // Bonus for high interaction score
+                $realtimeCategoryScores[$stat->category] = $score;
+            }
+            
+            Log::debug("User {$userId} REALTIME category preferences (last 2h):", $realtimeCategoryScores);
+            
+            // ========================================
+            // STEP 1B: HISTORICAL CATEGORY ANALYSIS (Last 30 days)
+            // For users who haven't visited recently but have past behavior
+            // This ensures their preferences are remembered
+            // ========================================
+            $historicalCategoryStats = DB::table('user_product_interactions')
+                ->join('product_simple', 'user_product_interactions.product_id', '=', 'product_simple.id')
+                ->where('user_product_interactions.user_id', $userId)
+                ->where('user_product_interactions.created_at', '>=', now()->subDays(30))
+                ->whereNotNull('product_simple.category')
+                ->select(
+                    'product_simple.category',
+                    DB::raw('SUM(user_product_interactions.interaction_value) as total_score'),
+                    DB::raw('COUNT(*) as view_count'),
+                    DB::raw('MAX(user_product_interactions.created_at) as last_viewed')
+                )
+                ->groupBy('product_simple.category')
+                ->orderByDesc('total_score')
+                ->orderByDesc('view_count')
+                ->limit(5)
+                ->get();
+            
+            // Build historical category scores
+            $historicalCategoryScores = [];
+            foreach ($historicalCategoryStats as $index => $stat) {
+                // Base score based on rank + bonus for repeated views
+                $score = 120 - ($index * 12);
+                $score += min($stat->view_count * 3, 40);  // Bonus for many views (max 40)
+                $score += min($stat->total_score * 2, 25); // Bonus for high interaction (max 25)
+                $historicalCategoryScores[$stat->category] = $score;
+            }
+            
+            Log::debug("User {$userId} HISTORICAL category preferences (last 30d):", $historicalCategoryScores);
+            
+            // Merge realtime into historical (realtime overwrites/boosts historical)
+            // This ensures recent behavior takes priority but historical is preserved
+            foreach ($historicalCategoryScores as $category => $histScore) {
+                if (isset($realtimeCategoryScores[$category])) {
+                    // Category is in both - realtime already has it, boost slightly
+                    $realtimeCategoryScores[$category] += $histScore * 0.2;
+                } else {
+                    // Category only in historical - add with slightly lower priority
+                    $realtimeCategoryScores[$category] = $histScore * 0.8;
                 }
             }
 
-            return $recommendations;
+            // ========================================
+            // STEP 2: PURCHASE HISTORY ANALYSIS
+            // Calculate category preferences based on what user has bought
+            // ========================================
+            $categoryPreferences = DB::table('orders')
+                ->join('product_simple', 'orders.product_simple_id', '=', 'product_simple.id')
+                ->where('orders.buyer_id', $userId)
+                ->where('orders.status', 'completed')
+                ->whereNotNull('product_simple.category')
+                ->select(
+                    'product_simple.category',
+                    DB::raw('COUNT(*) as purchase_count'),
+                    DB::raw('MAX(orders.created_at) as last_purchase')
+                )
+                ->groupBy('product_simple.category')
+                ->orderByDesc('purchase_count')
+                ->orderByDesc('last_purchase')
+                ->limit(5)
+                ->get();
+
+            // Build purchase category score map
+            $purchaseCategoryScores = [];
+            foreach ($categoryPreferences as $index => $pref) {
+                $purchaseCategoryScores[$pref->category] = 100 - ($index * 10) + ($pref->purchase_count * 5);
+            }
+            
+            // Merge realtime and purchase preferences (realtime takes priority)
+            $categoryScores = $realtimeCategoryScores;
+            foreach ($purchaseCategoryScores as $category => $score) {
+                if (!isset($categoryScores[$category])) {
+                    $categoryScores[$category] = $score;
+                } else {
+                    // Boost if both realtime and purchase history agree
+                    $categoryScores[$category] += $score * 0.3;
+                }
+            }
+            
+            Log::debug("User {$userId} COMBINED category scores:", $categoryScores);
+
+            // ========================================
+            // STEP 3A: RECENT HOT PRODUCTS (Last 6 hours)
+            // Products viewed multiple times recently - STRONGEST signal
+            // ========================================
+            $recentHotProducts = DB::table('user_product_interactions')
+                ->where('user_id', $userId)
+                ->where('created_at', '>=', now()->subHours(6))
+                ->whereNotIn('product_id', $usedProductIds)
+                ->select(
+                    'product_id',
+                    DB::raw('SUM(interaction_value) as interaction_score'),
+                    DB::raw('COUNT(*) as view_count')
+                )
+                ->groupBy('product_id')
+                ->having('view_count', '>=', 2) // At least 2 views = interested
+                ->orderByDesc('view_count')
+                ->orderByDesc('interaction_score')
+                ->limit(5)
+                ->get();
+
+            // Add recent hot products at the TOP with highest priority
+            if ($recentHotProducts->isNotEmpty()) {
+                $hotProductIds = $recentHotProducts->pluck('product_id')->toArray();
+                $hotProductModels = ProductSimple::whereIn('id', $hotProductIds)->get()->keyBy('id');
+                
+                foreach ($recentHotProducts as $stat) {
+                    $product = $hotProductModels->get($stat->product_id);
+                    if (!$product || in_array($product->id, $usedProductIds)) continue;
+                    
+                    // Very high base score for recently repeated views
+                    $baseScore = 250 + ($stat->view_count * 25) + min($stat->interaction_score * 3, 30);
+                    
+                    // Extra boost if in preferred category
+                    if (isset($categoryScores[$product->category])) {
+                        $baseScore += $categoryScores[$product->category] * 0.2;
+                    }
+                    
+                    $product->base_score = $baseScore;
+                    $product->algorithm = 'recent_hot_interest';
+                    $recommendations[] = $product;
+                    $usedProductIds[] = $product->id;
+                    
+                    Log::debug("RECENT HOT PRODUCT: {$product->name} (views: {$stat->view_count}, score: {$baseScore})");
+                }
+            }
+            
+            // ========================================
+            // STEP 3B: HISTORICAL HOT PRODUCTS (Last 30 days)
+            // Products user has shown repeated interest in over time
+            // Even if they haven't visited recently, remember their interests
+            // ========================================
+            $historicalHotProducts = DB::table('user_product_interactions')
+                ->where('user_id', $userId)
+                ->where('created_at', '>=', now()->subDays(30))
+                ->whereNotIn('product_id', $usedProductIds)
+                ->select(
+                    'product_id',
+                    DB::raw('SUM(interaction_value) as interaction_score'),
+                    DB::raw('COUNT(*) as view_count'),
+                    DB::raw('MAX(created_at) as last_viewed')
+                )
+                ->groupBy('product_id')
+                ->having('view_count', '>=', 2) // At least 2 views over 30 days
+                ->orderByDesc('view_count')
+                ->orderByDesc('interaction_score')
+                ->limit(8)
+                ->get();
+
+            // Add historical hot products (lower priority than recent)
+            if ($historicalHotProducts->isNotEmpty()) {
+                $histHotProductIds = $historicalHotProducts->pluck('product_id')->toArray();
+                $histHotProductModels = ProductSimple::whereIn('id', $histHotProductIds)->get()->keyBy('id');
+                
+                foreach ($historicalHotProducts as $stat) {
+                    $product = $histHotProductModels->get($stat->product_id);
+                    if (!$product || in_array($product->id, $usedProductIds)) continue;
+                    
+                    // High score for historically interested products
+                    $baseScore = 200 + ($stat->view_count * 15) + min($stat->interaction_score * 2, 25);
+                    
+                    // Extra boost if in preferred category
+                    if (isset($categoryScores[$product->category])) {
+                        $baseScore += $categoryScores[$product->category] * 0.25;
+                    }
+                    
+                    $product->base_score = $baseScore;
+                    $product->algorithm = 'recent_hot_interest';
+                    $recommendations[] = $product;
+                    $usedProductIds[] = $product->id;
+                    
+                    Log::debug("HISTORICAL HOT PRODUCT: {$product->name} (views: {$stat->view_count}, score: {$baseScore})");
+                }
+            }
+            
+            // Combine all hot products for similarity search
+            $allHotProductIds = collect($recentHotProducts)->pluck('product_id')
+                ->merge(collect($historicalHotProducts)->pluck('product_id'))
+                ->unique()
+                ->toArray();
+
+            // ========================================
+            // STEP 4: SIMILAR TO HOT PRODUCTS
+            // Get products similar to what user viewed multiple times (recent + historical)
+            // ========================================
+            if (!empty($allHotProductIds)) {
+                $similarToHot = DB::table('product_recommendations')
+                    ->join('product_simple', 'product_recommendations.similar_product_id', '=', 'product_simple.id')
+                    ->whereIn('product_recommendations.product_id', $allHotProductIds)
+                    ->whereNotIn('product_recommendations.similar_product_id', $usedProductIds)
+                    ->orderByDesc('product_recommendations.similarity_score')
+                    ->limit(12)
+                    ->select('product_simple.*', 'product_recommendations.similarity_score')
+                    ->get();
+                
+                foreach ($similarToHot as $product) {
+                    if (in_array($product->id, $usedProductIds)) continue;
+                    
+                    $baseScore = 180 + ($product->similarity_score * 40);
+                    
+                    // Extra boost if in hot category
+                    if (isset($realtimeCategoryScores[$product->category])) {
+                        $baseScore += $realtimeCategoryScores[$product->category] * 0.3;
+                    }
+                    
+                    $product->base_score = $baseScore;
+                    $product->algorithm = 'recent_hot_interest';
+                    $recommendations[] = $product;
+                    $usedProductIds[] = $product->id;
+                }
+            }
+
+            // ========================================
+            // STEP 5: HOT CATEGORY PRODUCTS
+            // Get top products from categories user is actively browsing
+            // ========================================
+            if (!empty($realtimeCategoryScores)) {
+                $hotCategories = array_keys($realtimeCategoryScores);
+                
+                foreach ($hotCategories as $categoryIndex => $category) {
+                    // Get more products from hotter categories
+                    $productLimit = max(2, 8 - ($categoryIndex * 2));
+                    
+                    $categoryProducts = ProductSimple::where('category', $category)
+                        ->whereNotIn('id', $usedProductIds)
+                        ->orderByDesc('view_count')
+                        ->limit($productLimit)
+                        ->get();
+                    
+                    foreach ($categoryProducts as $product) {
+                        if (in_array($product->id, $usedProductIds)) continue;
+                        
+                        // Score based on category hotness
+                        $categoryBonus = $realtimeCategoryScores[$category] ?? 0;
+                        $product->base_score = 160 + ($categoryBonus * 0.4) + (($product->view_count ?? 0) * 0.01);
+                        $product->algorithm = 'recent_hot_interest';
+                        $recommendations[] = $product;
+                        $usedProductIds[] = $product->id;
+                    }
+                }
+                
+                Log::debug("Added hot category products, total recommendations: " . count($recommendations));
+            }
+
+            // ========================================
+            // STEP 6: RECENT VIEWS (not repeated, but still interested)
+            // Products viewed once in last 24 hours
+            // ========================================
+            $recentInteractionStats = DB::table('user_product_interactions')
+                ->where('user_id', $userId)
+                ->where('created_at', '>=', now()->subHours(24))
+                ->whereNotIn('product_id', $usedProductIds)
+                ->select(
+                    'product_id',
+                    DB::raw('SUM(interaction_value) as interaction_score'),
+                    DB::raw('COUNT(*) as interaction_count')
+                )
+                ->groupBy('product_id')
+                ->orderByDesc('interaction_score')
+                ->orderByDesc('interaction_count')
+                ->limit(10)
+                ->get();
+
+            if ($recentInteractionStats->isNotEmpty()) {
+                $recentProductIds = $recentInteractionStats->pluck('product_id')->toArray();
+                $recentProducts = ProductSimple::whereIn('id', $recentProductIds)->get()->keyBy('id');
+                
+                foreach ($recentInteractionStats as $stat) {
+                    $product = $recentProducts->get($stat->product_id);
+                    if (!$product || in_array($product->id, $usedProductIds)) continue;
+                    
+                    $baseScore = 80 + min($stat->interaction_score * 2, 20);
+                    
+                    // Boost if in preferred category
+                    if (isset($categoryScores[$product->category])) {
+                        $baseScore += $categoryScores[$product->category] * 0.3;
+                    }
+                    
+                    $product->base_score = $baseScore;
+                    $product->algorithm = 'recent_hot_interest';
+                    $recommendations[] = $product;
+                    $usedProductIds[] = $product->id;
+                }
+            }
+
+            // ========================================
+            // STEP 7: PURCHASE-BASED CATEGORY RECOMMENDATIONS
+            // Get top products from purchased categories (for hybrid feel)
+            // ========================================
+            if (!empty($purchaseCategoryScores)) {
+                $purchasedCategories = array_keys($purchaseCategoryScores);
+                
+                foreach ($purchasedCategories as $category) {
+                    $categoryProducts = ProductSimple::where('category', $category)
+                        ->whereNotIn('id', $usedProductIds)
+                        ->orderByDesc('view_count')
+                        ->limit(3)
+                        ->get();
+                    
+                    foreach ($categoryProducts as $product) {
+                        if (in_array($product->id, $usedProductIds)) continue;
+                        
+                        $categoryBonus = $purchaseCategoryScores[$category] ?? 0;
+                        $product->base_score = 70 + $categoryBonus * 0.5 + (($product->view_count ?? 0) * 0.01);
+                        $product->algorithm = 'category_preference';
+                        $recommendations[] = $product;
+                        $usedProductIds[] = $product->id;
+                    }
+                }
+            }
+
+            // ========================================
+            // STEP 8: SIMILAR TO PURCHASED PRODUCTS (Hybrid)
+            // Find products similar to what user has bought
+            // ========================================
+            if (!empty($purchasedProductIds)) {
+                // Get recent purchases (last 5)
+                $recentPurchases = DB::table('orders')
+                    ->where('buyer_id', $userId)
+                    ->where('status', 'completed')
+                    ->orderByDesc('created_at')
+                    ->limit(5)
+                    ->pluck('product_simple_id')
+                    ->toArray();
+
+                $similarToPurchased = DB::table('product_recommendations')
+                    ->join('product_simple', 'product_recommendations.similar_product_id', '=', 'product_simple.id')
+                    ->whereIn('product_recommendations.product_id', $recentPurchases)
+                    ->whereNotIn('product_recommendations.similar_product_id', $usedProductIds)
+                    ->orderByDesc('product_recommendations.similarity_score')
+                    ->limit(15)
+                    ->select('product_simple.*', 'product_recommendations.similarity_score')
+                    ->get();
+
+                foreach ($similarToPurchased as $product) {
+                    if (in_array($product->id, $usedProductIds)) continue;
+                    
+                    $baseScore = 60 + ($product->similarity_score * 30);
+                    
+                    // BOOST if in preferred category
+                    if (isset($categoryScores[$product->category])) {
+                        $baseScore += $categoryScores[$product->category] * 0.4;
+                    }
+                    
+                    $product->base_score = $baseScore;
+                    $product->algorithm = 'similar_to_purchased';
+                    $recommendations[] = $product;
+                    $usedProductIds[] = $product->id;
+                }
+            }
+
+            // ========================================
+            // STEP 9: SIMILAR TO RECENTLY VIEWED (Hybrid)
+            // Products similar to what user has been browsing
+            // ========================================
+            $recentViewedIds = DB::table('user_product_interactions')
+                ->where('user_id', $userId)
+                ->whereNotIn('product_id', $purchasedProductIds)
+                ->orderByDesc('created_at')
+                ->limit(10)
+                ->pluck('product_id')
+                ->toArray();
+
+            if (!empty($recentViewedIds)) {
+                $similarToViewed = DB::table('product_recommendations')
+                    ->join('product_simple', 'product_recommendations.similar_product_id', '=', 'product_simple.id')
+                    ->whereIn('product_recommendations.product_id', $recentViewedIds)
+                    ->whereNotIn('product_recommendations.similar_product_id', $usedProductIds)
+                    ->orderByDesc('product_recommendations.similarity_score')
+                    ->limit(15)
+                    ->select('product_simple.*', 'product_recommendations.similarity_score')
+                    ->get();
+
+                foreach ($similarToViewed as $product) {
+                    if (in_array($product->id, $usedProductIds)) continue;
+                    
+                    $baseScore = 50 + ($product->similarity_score * 25);
+                    
+                    // BOOST if in preferred category
+                    if (isset($categoryScores[$product->category])) {
+                        $baseScore += $categoryScores[$product->category] * 0.3;
+                    }
+                    
+                    $product->base_score = $baseScore;
+                    $product->algorithm = 'similar_to_viewed';
+                    $recommendations[] = $product;
+                    $usedProductIds[] = $product->id;
+                }
+            }
+
+            // ========================================
+            // STEP 10: PRE-CALCULATED RECOMMENDATIONS (Hybrid - Long-term)
+            // From the batch training process
+            // ========================================
+            $longTermRecs = DB::table('user_recommendations')
+                ->join('product_simple', 'user_recommendations.product_id', '=', 'product_simple.id')
+                ->where('user_recommendations.user_id', $userId)
+                ->whereNotIn('user_recommendations.product_id', $usedProductIds)
+                ->orderBy('user_recommendations.rank')
+                ->limit(20)
+                ->select('product_simple.*', 'user_recommendations.score', 'user_recommendations.algorithm')
+                ->get();
+
+            foreach ($longTermRecs as $product) {
+                if (in_array($product->id, $usedProductIds)) continue;
+                
+                $baseScore = 40 + ($product->score * 10);
+                
+                // BOOST if in preferred category
+                if (isset($categoryScores[$product->category])) {
+                    $baseScore += $categoryScores[$product->category] * 0.25;
+                }
+                
+                $product->base_score = $baseScore;
+                // Keep original algorithm name
+                $recommendations[] = $product;
+                $usedProductIds[] = $product->id;
+            }
+
+            // ========================================
+            // STEP 11: POPULAR FALLBACK
+            // For users with no/little history
+            // ========================================
+            if (count($recommendations) < $limit) {
+                $popularIds = Cache::get('popular_recommendations', []);
+                
+                if (!empty($popularIds)) {
+                    $popularProducts = ProductSimple::whereIn('id', $popularIds)
+                        ->whereNotIn('id', $usedProductIds)
+                        ->limit($limit - count($recommendations))
+                        ->get();
+                        
+                    foreach ($popularProducts as $product) {
+                        $baseScore = 20;
+                        
+                        // Even popular products get category boost
+                        if (isset($categoryScores[$product->category])) {
+                            $baseScore += $categoryScores[$product->category] * 0.2;
+                        }
+                        
+                        $product->base_score = $baseScore;
+                        $product->algorithm = 'popular_fallback';
+                        $recommendations[] = $product;
+                    }
+                }
+            }
+
+            // ========================================
+            // FINAL: Sort by score and return
+            // ========================================
+            usort($recommendations, function($a, $b) {
+                return $b->base_score <=> $a->base_score;
+            });
+
+            Log::debug("User {$userId} recommendations count: " . count($recommendations));
+
+            return array_slice($recommendations, 0, $limit);
         });
     }
 
@@ -610,8 +1099,12 @@ class RecommendationService
             'updated_at' => now(),
         ]);
 
-        // Clear user's recommendation cache
-        Cache::forget("user_recommendations_{$userId}");
+        // Clear user's recommendation cache (all possible limits)
+        $commonLimits = [6, 10, 12, 20, 50, 100];
+        foreach ($commonLimits as $limit) {
+            Cache::forget("user_recommendations_{$userId}_{$limit}");
+        }
+        Cache::forget("user_recommendations_{$userId}"); // Legacy key
     }
 
     /**
@@ -624,8 +1117,12 @@ class RecommendationService
         
         // Clear user-specific caches (this is simplified, in production use tags)
         $userIds = DB::table('user_recommendations')->distinct()->pluck('user_id');
+        $commonLimits = [6, 10, 12, 20, 50, 100];
         foreach ($userIds as $userId) {
-            Cache::forget("user_recommendations_{$userId}");
+            foreach ($commonLimits as $limit) {
+                Cache::forget("user_recommendations_{$userId}_{$limit}");
+            }
+            Cache::forget("user_recommendations_{$userId}"); // Legacy key
         }
         
         // Clear product caches

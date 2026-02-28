@@ -23,6 +23,22 @@ class MainController extends Controller
     }
 
     /**
+     * Show the "For You" recommendations page
+     */
+    public function forYou()
+    {
+        return view('main.for-you');
+    }
+
+    /**
+     * Show promotions page (games on sale)
+     */
+    public function promotions()
+    {
+        return view('main.promotions');
+    }
+
+    /**
      * Show categories page
      */
     public function categories()
@@ -108,6 +124,14 @@ class MainController extends Controller
     public function newsDetail($id)
     {
         return view('main.news-detail', ['newsId' => $id]);
+    }
+
+    /**
+     * Show support page
+     */
+    public function support()
+    {
+        return view('main.support');
     }
 }
 

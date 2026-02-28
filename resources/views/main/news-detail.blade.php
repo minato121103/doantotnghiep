@@ -218,7 +218,7 @@
 
                 <!-- Sidebar -->
                 <aside class="lg:col-span-4">
-                    <div class="sticky top-24 space-y-6">
+                    <div class="sticky top-36 space-y-6" style="max-height: calc(100vh - 160px); overflow-y: auto;">
                         <!-- Related News -->
                         <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
                             <h3 class="font-heading text-lg font-bold text-slate-800 mb-4 flex items-center">

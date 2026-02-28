@@ -149,6 +149,13 @@
             'database.steam-accounts': ['admin'],
             'database.recommendations': ['admin'],
             'database.table-structure': ['admin'],
+            'database.support-tickets': ['admin'],
+            'database.promotions': ['admin'],
+            'database.create-promotion': ['admin'],
+            'database.edit-promotion': ['admin'],
+            'database.coupons': ['admin'],
+            'database.create-coupon': ['admin'],
+            'database.edit-coupon': ['admin'],
         };
         
         // Current page route name

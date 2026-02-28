@@ -119,10 +119,12 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Detail Description</label>
                     <!-- Quill Editor Container -->
-                    <div id="detail_description_editor" style="height: 200px;" class="mb-2"></div>
+                    <div id="detail_description_editor" class="bg-white border border-gray-300 rounded-md"></div>
                     <!-- Hidden textarea to store HTML content -->
                     <textarea id="detail_description" name="detail_description" class="hidden"></textarea>
-                    <p class="text-xs text-gray-500 mb-2">Sử dụng thanh công cụ để định dạng văn bản (in đậm, in nghiêng, danh sách, v.v.)</p>
+                    <p class="text-xs text-gray-500 mt-2">
+                        Nhập nội dung mô tả chi tiết sản phẩm hoặc paste từ Word...
+                    </p>
                     <p id="error-detail_description" class="text-red-500 text-sm mt-1 hidden"></p>
                 </div>
             </div>
@@ -150,6 +152,52 @@
 @push('styles')
 <!-- Quill Editor CSS -->
 <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<style>
+    #detail_description_editor {
+        height: 400px;
+    }
+    #detail_description_editor .ql-editor {
+        font-size: 14px;
+        line-height: 1.6;
+    }
+    /* Improved image styling for balanced display */
+    #detail_description_editor .ql-editor img {
+        display: block;
+        max-width: 100%;
+        width: auto;
+        height: auto;
+        margin: 16px auto;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    #detail_description_editor .ql-editor img:hover {
+        transform: scale(1.02);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    /* Image container for better layout */
+    #detail_description_editor .ql-editor p img {
+        display: inline-block;
+        max-width: 48%;
+        margin: 8px 1%;
+        vertical-align: top;
+    }
+    #detail_description_editor .ql-editor p img:only-child {
+        display: block;
+        max-width: 100%;
+        margin: 16px auto;
+    }
+    .ql-toolbar.ql-snow {
+        border-top-left-radius: 6px;
+        border-top-right-radius: 6px;
+        border-color: #d1d5db;
+    }
+    .ql-container.ql-snow {
+        border-bottom-left-radius: 6px;
+        border-bottom-right-radius: 6px;
+        border-color: #d1d5db;
+    }
+</style>
 @endpush
 
 @push('scripts')
@@ -162,28 +210,95 @@
     // Initialize Quill Editor
     let quillEditor = null;
     document.addEventListener('DOMContentLoaded', () => {
-        // Initialize Quill editor
+        // Initialize Quill editor with extended toolbar (same as News)
         quillEditor = new Quill('#detail_description_editor', {
             theme: 'snow',
             modules: {
                 toolbar: [
-                    [{ 'header': [1, 2, 3, false] }],
+                    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                    [{ 'font': [] }],
+                    [{ 'size': ['small', false, 'large', 'huge'] }],
                     ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'color': [] }, { 'background': [] }],
                     [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    [{ 'indent': '-1'}, { 'indent': '+1' }],
                     [{ 'align': [] }],
-                    ['link'],
+                    ['link', 'image', 'video'],
+                    ['blockquote', 'code-block'],
                     ['clean']
-                ]
+                ],
+                clipboard: {
+                    matchVisual: false // Better paste from Word
+                }
             },
-            placeholder: 'Nhập mô tả chi tiết sản phẩm...'
+            placeholder: 'Nhập nội dung mô tả chi tiết sản phẩm hoặc paste từ Word...'
         });
         
         // Update hidden textarea when editor content changes
         quillEditor.on('text-change', function() {
-            const html = quillEditor.root.innerHTML;
+            let html = quillEditor.root.innerHTML;
+            // Auto-detect and convert image URLs to img tags
+            html = autoDetectImages(html);
             document.getElementById('detail_description').value = html;
         });
+        
+        // Handle paste event to detect image URLs
+        quillEditor.root.addEventListener('paste', function(e) {
+            setTimeout(() => {
+                let html = quillEditor.root.innerHTML;
+                html = autoDetectImages(html);
+                if (html !== quillEditor.root.innerHTML) {
+                    quillEditor.root.innerHTML = html;
+                    document.getElementById('detail_description').value = html;
+                }
+            }, 100);
+        });
     });
+    
+    // Auto-detect image URLs and convert to img tags with balanced display
+    function autoDetectImages(html) {
+        // Regex patterns for different image URL formats
+        const patterns = [
+            // Standard image extensions
+            /(?<!src=["'])(?<!href=["'])(https?:\/\/[^\s<>"]+\.(?:jpg|jpeg|png|gif|webp|bmp|svg|ico))(?:\?[^\s<>"]*)?(?![^<]*>)/gi,
+            // Steam CDN images
+            /(?<!src=["'])(?<!href=["'])(https?:\/\/(?:cdn\.cloudflare\.steamstatic\.com|steamcdn-a\.akamaihd\.net|store\.steampowered\.com)[^\s<>"]+)(?![^<]*>)/gi,
+            // Imgur images (without extension)
+            /(?<!src=["'])(?<!href=["'])(https?:\/\/(?:i\.)?imgur\.com\/[a-zA-Z0-9]+)(?![^<]*>)/gi,
+            // Google Drive images
+            /(?<!src=["'])(?<!href=["'])(https?:\/\/drive\.google\.com\/[^\s<>"]+)(?![^<]*>)/gi,
+            // Discord CDN
+            /(?<!src=["'])(?<!href=["'])(https?:\/\/cdn\.discordapp\.com\/[^\s<>"]+)(?![^<]*>)/gi,
+            // Generic image hosting patterns
+            /(?<!src=["'])(?<!href=["'])(https?:\/\/[^\s<>"]*(?:image|img|photo|pic|media|upload)[^\s<>"]*\.(?:jpg|jpeg|png|gif|webp))(?:[^\s<>"]*)?(?![^<]*>)/gi
+        ];
+        
+        let result = html;
+        
+        patterns.forEach(regex => {
+            result = result.replace(regex, function(url) {
+                // Check if URL is already inside an img tag
+                const beforeMatch = result.substring(0, result.indexOf(url));
+                if (beforeMatch.lastIndexOf('<img') > beforeMatch.lastIndexOf('>')) {
+                    return url; // Already in img tag, don't replace
+                }
+                // Create balanced, centered image with proper styling
+                return `<img src="${url}" alt="Image" class="auto-detected-image" style="display: block; max-width: 100%; height: auto; margin: 16px auto; border-radius: 8px;">`;
+            });
+        });
+        
+        return result;
+    }
+    
+    // Function to manually insert image URL
+    function insertImageFromUrl() {
+        const url = prompt('Nhập URL ảnh:');
+        if (url && quillEditor) {
+            const range = quillEditor.getSelection(true);
+            quillEditor.insertEmbed(range.index, 'image', url);
+            quillEditor.setSelection(range.index + 1);
+        }
+    }
     
     // Get product ID from URL: /database/products/{id}/edit
     const urlParts = window.location.pathname.split('/').filter(part => part);

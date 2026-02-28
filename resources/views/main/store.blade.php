@@ -9,7 +9,7 @@
             <div class="flex flex-col lg:flex-row gap-8">
                 <!-- Sidebar Filters -->
                 <aside class="lg:w-64 flex-shrink-0">
-                    <div class="bg-white rounded-2xl border border-slate-200 p-4 sticky top-24">
+                    <div class="bg-white rounded-2xl border border-slate-200 p-4 sticky top-36">
                         <!-- Search -->
                         <div class="mb-4">
                             <div class="relative">
@@ -147,6 +147,7 @@
     // API Configuration
     const BASE_URL = '{{ url("/") }}';
     const API_BASE_URL = '{{ url("/api/products") }}';
+    const RECOMMENDATIONS_API = '{{ url("/api/recommendations") }}';
 
     // State
     let currentPage = 1;
@@ -157,6 +158,7 @@
     let currentSort = 'id-desc';
     let currentView = 'grid';
     let perPage = 12;
+    let isFeaturedMode = false; // "Dành cho bạn" mode - shows personalized recommendations
 
     // Utility functions
     function escapeHtml(text) {
@@ -188,6 +190,34 @@
         const current = parseFloat(prices[prices.length - 1].replace(/\./g, '').replace(',', '.'));
         if (original <= 0 || current >= original) return 0;
         return Math.round((1 - current / original) * 100);
+    }
+
+    function formatPriceVN(amount) {
+        return new Intl.NumberFormat('vi-VN').format(Math.round(amount)) + 'đ';
+    }
+
+    function getPromoPriceHtml(product, fontSize = 'text-lg') {
+        if (product.sale_price) {
+            const prices = extractPrices(product.price);
+            const originalPrice = prices.current || product.price;
+            return `<div class="flex flex-col">
+                <span class="text-slate-400 line-through text-xs">${originalPrice}</span>
+                <span class="text-game-accent font-bold ${fontSize}">${formatPriceVN(product.sale_price)}</span>
+            </div>`;
+        }
+        const prices = extractPrices(product.price);
+        if (prices.original && prices.original !== prices.current) {
+            return `<div class="flex flex-col">
+                <span class="text-slate-400 line-through text-xs">${prices.original}</span>
+                <span class="text-game-accent font-bold ${fontSize}">${prices.current || 'Liên hệ'}</span>
+            </div>`;
+        }
+        return `<span class="text-game-accent font-bold ${fontSize}">${prices.current || 'Liên hệ'}</span>`;
+    }
+
+    function getPromoDiscount(product) {
+        if (product.discount_percent) return product.discount_percent;
+        return calculateDiscount(product.price);
     }
 
     // Gợi ý tìm kiếm (search suggestions)
@@ -316,6 +346,341 @@
         }
     }
 
+    // ========================================
+    // FEATURED MODE - Personalized Recommendations
+    // ========================================
+    
+    // Initialize featured mode UI
+    function initFeaturedMode() {
+        // Update page title
+        document.title = 'Dành cho bạn - GameTech';
+        
+        // Add featured mode header
+        const headerHtml = `
+            <div id="featured-header" class="mb-6 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-6 border border-purple-200">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 bg-gradient-to-br from-game-purple to-game-accent rounded-xl flex items-center justify-center">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="font-display text-2xl font-bold text-slate-800">Dành cho bạn</h1>
+                        <p class="text-slate-600">Game được đề xuất dựa trên sở thích và hành vi của bạn</p>
+                    </div>
+                </div>
+                <div id="recommendation-stats" class="mt-4 flex flex-wrap gap-2">
+                    <!-- Stats will be populated here -->
+                </div>
+            </div>
+        `;
+        
+        // Insert header before products container
+        const productsSection = document.querySelector('.flex-1');
+        if (productsSection) {
+            productsSection.insertAdjacentHTML('afterbegin', headerHtml);
+        }
+        
+        // Hide filters that don't apply to recommendations
+        const sortSelect = document.getElementById('sort-select');
+        if (sortSelect) {
+            sortSelect.closest('.mb-4').style.display = 'none';
+        }
+    }
+
+    // Load personalized recommendations
+    async function loadRecommendations() {
+        const container = document.getElementById('products-container');
+        container.innerHTML = `
+            <div class="col-span-full flex justify-center py-16">
+                <div class="flex flex-col items-center">
+                    <div class="animate-spin w-12 h-12 border-4 border-game-accent border-t-transparent rounded-full mb-4"></div>
+                    <p class="text-slate-500">Đang tải đề xuất cho bạn...</p>
+                </div>
+            </div>
+        `;
+
+        try {
+            // Get auth token
+            const token = localStorage.getItem('auth_token');
+            if (!token) {
+                showLoginRequired();
+                return;
+            }
+
+            // Fetch personalized recommendations (request more items)
+            const response = await fetch(`${RECOMMENDATIONS_API}/for-me?limit=50`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    showLoginRequired();
+                    return;
+                }
+                throw new Error('Failed to load recommendations');
+            }
+
+            const data = await response.json();
+
+            if (data.success && data.data && data.data.length > 0) {
+                renderRecommendations(data.data);
+            } else {
+                // Fallback to popular if no personalized recommendations
+                const popularResponse = await fetch(`${RECOMMENDATIONS_API}/popular?limit=20`);
+                const popularData = await popularResponse.json();
+                
+                if (popularData.success && popularData.data && popularData.data.length > 0) {
+                    renderRecommendations(popularData.data, true);
+                } else {
+                    showNoRecommendations();
+                }
+            }
+        } catch (error) {
+            console.error('Error loading recommendations:', error);
+            showRecommendationError();
+        }
+    }
+
+    // Render recommendations with algorithm badges
+    function renderRecommendations(products, isPopular = false) {
+        const container = document.getElementById('products-container');
+        
+        if (!products || products.length === 0) {
+            showNoRecommendations();
+            return;
+        }
+
+        // Count by algorithm type
+        const algorithmCounts = {};
+        products.forEach(p => {
+            const algo = p.algorithm || 'other';
+            algorithmCounts[algo] = (algorithmCounts[algo] || 0) + 1;
+        });
+
+        // Update stats
+        const statsContainer = document.getElementById('recommendation-stats');
+        if (statsContainer) {
+            const algorithmLabels = {
+                'recent_hot_interest': { label: '🔥 Đang quan tâm', color: 'bg-red-100 text-red-700' },
+                'similar_to_recent_hot': { label: '✨ Tương tự game đang xem', color: 'bg-purple-100 text-purple-700' },
+                'same_category_as_hot': { label: '🎮 Cùng thể loại', color: 'bg-blue-100 text-blue-700' },
+                'realtime_similar': { label: '💡 Gợi ý theo lịch sử', color: 'bg-indigo-100 text-indigo-700' },
+                'collaborative': { label: '👥 Người khác cũng thích', color: 'bg-green-100 text-green-700' },
+                'content': { label: '📋 Nội dung tương tự', color: 'bg-teal-100 text-teal-700' },
+                'hybrid': { label: '🧠 AI đề xuất', color: 'bg-amber-100 text-amber-700' },
+                'popular_fallback': { label: '🌟 Phổ biến', color: 'bg-slate-100 text-slate-700' }
+            };
+
+            let statsHtml = '';
+            for (const [algo, count] of Object.entries(algorithmCounts)) {
+                const info = algorithmLabels[algo] || { label: algo, color: 'bg-slate-100 text-slate-600' };
+                statsHtml += `<span class="px-3 py-1 ${info.color} rounded-full text-xs font-medium">${info.label}: ${count}</span>`;
+            }
+            statsContainer.innerHTML = statsHtml;
+        }
+
+        // Render cards with recommendation badges
+        if (currentView === 'grid') {
+            container.className = 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4';
+            container.innerHTML = products.map(product => renderRecommendationCard(product)).join('');
+        } else {
+            container.className = 'space-y-4';
+            container.innerHTML = products.map(product => renderRecommendationListCard(product)).join('');
+        }
+
+        // No pagination for recommendations (show all)
+        document.getElementById('pagination-container').innerHTML = `
+            <div class="text-center text-slate-500 py-4">
+                Hiển thị ${products.length} game được đề xuất cho bạn
+            </div>
+        `;
+    }
+
+    function renderRecommendationCard(product) {
+        const discount = getPromoDiscount(product);
+        const outOfStock = isOutOfStock(product);
+        const algorithm = product.algorithm || 'other';
+        
+        // Algorithm badge styling
+        const badgeStyles = {
+            'recent_hot_interest': { bg: 'bg-red-500', icon: '🔥', text: 'Đang xem' },
+            'category_preference': { bg: 'bg-blue-500', icon: '🎯', text: 'Thể loại yêu thích' },
+            'similar_to_purchased': { bg: 'bg-purple-500', icon: '🛒', text: 'Tương tự đã mua' },
+            'similar_to_viewed': { bg: 'bg-indigo-500', icon: '👁️', text: 'Tương tự đã xem' },
+            'similar_to_recent_hot': { bg: 'bg-purple-500', icon: '✨', text: 'Tương tự' },
+            'same_category_as_hot': { bg: 'bg-blue-500', icon: '🎮', text: 'Cùng loại' },
+            'realtime_similar': { bg: 'bg-indigo-500', icon: '💡', text: 'Gợi ý' },
+            'collaborative': { bg: 'bg-green-500', icon: '👥', text: 'Xu hướng' },
+            'content': { bg: 'bg-teal-500', icon: '📋', text: 'Nội dung' },
+            'hybrid': { bg: 'bg-amber-500', icon: '🧠', text: 'AI' },
+            'popular_fallback': { bg: 'bg-slate-500', icon: '🌟', text: 'Hot' }
+        };
+        
+        const badge = badgeStyles[algorithm] || { bg: 'bg-slate-500', icon: '📌', text: 'Đề xuất' };
+
+        return `
+            <a href="${BASE_URL}/game/${product.id}" class="group bg-white rounded-xl overflow-hidden border border-slate-200 hover:border-game-accent hover:shadow-lg transition-all card-hover flex relative">
+                <div class="absolute top-2 left-2 z-10 px-2 py-1 ${badge.bg} text-white text-[10px] font-bold rounded-full flex items-center gap-1">
+                    <span>${badge.icon}</span>
+                    <span>${badge.text}</span>
+                </div>
+                <div class="flex-shrink-0 w-28 h-28 overflow-hidden rounded-lg m-3 relative">
+                    <img src="${product.image || 'https://via.placeholder.com/150x150?text=Game'}" 
+                         alt="${escapeHtml(product.title)}" 
+                         class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                         loading="lazy">
+                    ${outOfStock ? outOfStockOverlay() : ''}
+                    ${!outOfStock && discount > 0 ? `<div class="absolute top-1 right-1 px-1.5 py-0.5 bg-game-green text-white text-[10px] font-bold rounded">-${discount}%</div>` : ''}
+                </div>
+                <div class="flex-1 py-3 pr-3 flex flex-col justify-between min-w-0">
+                    <div>
+                        <h3 class="font-heading font-semibold text-slate-800 text-sm leading-tight line-clamp-2 group-hover:text-game-accent transition-colors">
+                            ${escapeHtml(product.title)}
+                        </h3>
+                        <div class="flex items-center gap-2 mt-1.5">
+                            ${product.category ? `<span class="px-2 py-0.5 bg-game-accent/10 text-game-accent text-xs font-medium rounded">${escapeHtml(product.category)}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex items-end justify-between mt-2">
+                        ${getPromoPriceHtml(product)}
+                        ${outOfStock ? `<span class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed" title="Hết hàng"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg></span>` : `<button type="button" 
+                                class="w-8 h-8 bg-game-accent rounded-lg flex items-center justify-center group-hover:bg-game-accent-hover transition-colors cursor-pointer add-to-cart-btn" 
+                                data-product-id="${product.id}"
+                                data-product-title="${escapeHtml(product.title)}"
+                                data-product-image="${product.image || ''}"
+                                data-product-price="${escapeHtml(product.price || '')}"
+                                onclick="return handleAddToCart(this, event);">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                            </svg>
+                        </button>`}
+                    </div>
+                </div>
+            </a>
+        `;
+    }
+
+    function renderRecommendationListCard(product) {
+        const discount = getPromoDiscount(product);
+        const outOfStock = isOutOfStock(product);
+        const algorithm = product.algorithm || 'other';
+        
+        const badgeStyles = {
+            'recent_hot_interest': { bg: 'bg-red-500', icon: '🔥', text: 'Đang xem' },
+            'category_preference': { bg: 'bg-blue-500', icon: '🎯', text: 'Thể loại yêu thích' },
+            'similar_to_purchased': { bg: 'bg-purple-500', icon: '🛒', text: 'Tương tự đã mua' },
+            'similar_to_viewed': { bg: 'bg-indigo-500', icon: '👁️', text: 'Tương tự đã xem' },
+            'similar_to_recent_hot': { bg: 'bg-purple-500', icon: '✨', text: 'Tương tự' },
+            'same_category_as_hot': { bg: 'bg-blue-500', icon: '🎮', text: 'Cùng loại' },
+            'realtime_similar': { bg: 'bg-indigo-500', icon: '💡', text: 'Gợi ý' },
+            'collaborative': { bg: 'bg-green-500', icon: '👥', text: 'Xu hướng' },
+            'content': { bg: 'bg-teal-500', icon: '📋', text: 'Nội dung' },
+            'hybrid': { bg: 'bg-amber-500', icon: '🧠', text: 'AI' },
+            'popular_fallback': { bg: 'bg-slate-500', icon: '🌟', text: 'Hot' }
+        };
+        
+        const badge = badgeStyles[algorithm] || { bg: 'bg-slate-500', icon: '📌', text: 'Đề xuất' };
+
+        return `
+            <a href="${BASE_URL}/game/${product.id}" class="group flex bg-white rounded-xl border border-slate-200 hover:border-game-accent hover:shadow-lg transition-all overflow-hidden relative">
+                <div class="absolute top-2 left-2 z-10 px-2 py-1 ${badge.bg} text-white text-[10px] font-bold rounded-full flex items-center gap-1">
+                    <span>${badge.icon}</span>
+                    <span>${badge.text}</span>
+                </div>
+                <div class="flex-shrink-0 w-32 h-32 sm:w-40 sm:h-40 relative overflow-hidden">
+                    <img src="${product.image || 'https://via.placeholder.com/150x150?text=Game'}" 
+                         alt="${escapeHtml(product.title)}" 
+                         class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                         loading="lazy">
+                    ${outOfStock ? outOfStockOverlay() : ''}
+                    ${!outOfStock && discount > 0 ? `<div class="absolute top-2 right-2 px-2 py-1 bg-game-green text-white text-xs font-bold rounded">-${discount}%</div>` : ''}
+                </div>
+                <div class="flex-1 p-4 flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-heading text-lg font-semibold text-slate-800 group-hover:text-game-accent transition-colors line-clamp-2">
+                            ${escapeHtml(product.title)}
+                        </h3>
+                        <div class="flex flex-wrap items-center gap-2 mt-2">
+                            ${product.category ? `<span class="px-2 py-1 bg-game-accent/10 text-game-accent text-xs font-medium rounded">${escapeHtml(product.category)}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex items-end justify-between mt-3">
+                        ${getPromoPriceHtml(product, 'text-xl')}
+                        ${outOfStock ? `<span class="px-4 py-2 bg-slate-200 text-slate-500 font-semibold rounded-lg cursor-not-allowed">Hết hàng</span>` : `<button type="button" 
+                                class="px-4 py-2 bg-game-accent text-white font-semibold rounded-lg hover:bg-game-accent-hover transition-colors add-to-cart-btn" 
+                                data-product-id="${product.id}"
+                                data-product-title="${escapeHtml(product.title)}"
+                                data-product-image="${product.image || ''}"
+                                data-product-price="${escapeHtml(product.price || '')}"
+                                onclick="return handleAddToCart(this, event);">
+                            <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                            </svg>
+                            Thêm
+                        </button>`}
+                    </div>
+                </div>
+            </a>
+        `;
+    }
+
+    function showLoginRequired() {
+        const container = document.getElementById('products-container');
+        container.innerHTML = `
+            <div class="col-span-full text-center py-16">
+                <svg class="w-24 h-24 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+                <h3 class="text-xl font-bold text-slate-700 mb-2">Đăng nhập để xem đề xuất</h3>
+                <p class="text-slate-500 mb-6">Vui lòng đăng nhập để xem các game được đề xuất dành riêng cho bạn</p>
+                <a href="${BASE_URL}/login" class="px-6 py-3 bg-game-accent text-white font-semibold rounded-xl hover:bg-game-accent-hover transition-colors">
+                    Đăng nhập ngay
+                </a>
+            </div>
+        `;
+        document.getElementById('pagination-container').innerHTML = '';
+    }
+
+    // Show no recommendations message
+    function showNoRecommendations() {
+        const container = document.getElementById('products-container');
+        container.innerHTML = `
+            <div class="col-span-full text-center py-16">
+                <svg class="w-24 h-24 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                </svg>
+                <h3 class="text-xl font-bold text-slate-700 mb-2">Chưa có đề xuất</h3>
+                <p class="text-slate-500 mb-6">Hãy khám phá thêm các game để hệ thống hiểu sở thích của bạn</p>
+                <a href="${BASE_URL}/store" class="px-6 py-3 bg-game-accent text-white font-semibold rounded-xl hover:bg-game-accent-hover transition-colors">
+                    Khám phá game
+                </a>
+            </div>
+        `;
+        document.getElementById('pagination-container').innerHTML = '';
+    }
+
+    // Show recommendation error
+    function showRecommendationError() {
+        const container = document.getElementById('products-container');
+        container.innerHTML = `
+            <div class="col-span-full text-center py-16">
+                <svg class="w-24 h-24 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <h3 class="text-xl font-bold text-slate-700 mb-2">Không thể tải đề xuất</h3>
+                <p class="text-slate-500 mb-6">Đã có lỗi xảy ra khi tải đề xuất. Vui lòng thử lại.</p>
+                <button onclick="loadRecommendations()" class="px-6 py-3 bg-game-accent text-white font-semibold rounded-xl hover:bg-game-accent-hover transition-colors">
+                    Thử lại
+                </button>
+            </div>
+        `;
+        document.getElementById('pagination-container').innerHTML = '';
+    }
+
     // Render products
     function renderProducts(products, pagination) {
         const container = document.getElementById('products-container');
@@ -337,10 +702,20 @@
         renderPagination(pagination);
     }
 
-    // Grid card template
+    function isOutOfStock(product) {
+        const count = product.available_accounts ?? product.steam_accounts_sum_count ?? 0;
+        return Number(count) === 0;
+    }
+
+    function outOfStockOverlay() {
+        return `<div class="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/80 pointer-events-none">
+            <span class="font-bold text-slate-800 text-base uppercase tracking-wide drop-shadow-sm">Hết hàng</span>
+        </div>`;
+    }
+
     function renderGridCard(product) {
-        const prices = extractPrices(product.price);
-        const discount = calculateDiscount(product.price);
+        const discount = getPromoDiscount(product);
+        const outOfStock = isOutOfStock(product);
 
         return `
             <a href="${BASE_URL}/game/${product.id}" class="group bg-white rounded-xl overflow-hidden border border-slate-200 hover:border-game-accent hover:shadow-lg transition-all card-hover flex">
@@ -349,7 +724,8 @@
                          alt="${escapeHtml(product.title)}" 
                          class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                          loading="lazy">
-                    ${discount > 0 ? `<div class="absolute top-1 right-1 px-1.5 py-0.5 bg-game-green text-white text-[10px] font-bold rounded">-${discount}%</div>` : ''}
+                    ${outOfStock ? outOfStockOverlay() : ''}
+                    ${!outOfStock && discount > 0 ? `<div class="absolute top-1 right-1 px-1.5 py-0.5 bg-game-green text-white text-[10px] font-bold rounded">-${discount}%</div>` : ''}
                 </div>
                 <div class="flex-1 py-3 pr-3 flex flex-col justify-between min-w-0">
                     <div>
@@ -361,11 +737,12 @@
                         </div>
                     </div>
                     <div class="flex items-end justify-between mt-2">
-                        <div class="flex flex-col">
-                            ${prices.original && prices.original !== prices.current ? `<span class="text-slate-400 line-through text-xs">${prices.original}</span>` : ''}
-                            <span class="text-game-accent font-bold text-lg">${prices.current || 'Liên hệ'}</span>
-                        </div>
-                        <button type="button" 
+                        ${getPromoPriceHtml(product)}
+                        ${outOfStock
+                            ? `<span class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed" title="Hết hàng">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                               </span>`
+                            : `<button type="button" 
                                 class="w-8 h-8 bg-game-accent rounded-lg flex items-center justify-center group-hover:bg-game-accent-hover transition-colors cursor-pointer add-to-cart-btn" 
                                 data-product-id="${product.id}"
                                 data-product-title="${escapeHtml(product.title)}"
@@ -375,25 +752,25 @@
                             <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                             </svg>
-                        </button>
+                        </button>`}
                     </div>
                 </div>
             </a>
         `;
     }
 
-    // List card template
     function renderListCard(product) {
-        const prices = extractPrices(product.price);
-        const discount = calculateDiscount(product.price);
+        const discount = getPromoDiscount(product);
+        const outOfStock = isOutOfStock(product);
 
         return `
             <a href="${BASE_URL}/game/${product.id}" class="group bg-white rounded-xl overflow-hidden border border-slate-200 hover:border-game-accent hover:shadow-lg transition-all flex">
-                <div class="flex-shrink-0 w-32 h-32 md:w-40 md:h-40 overflow-hidden">
+                <div class="flex-shrink-0 w-32 h-32 md:w-40 md:h-40 overflow-hidden relative">
                     <img src="${product.image || 'https://via.placeholder.com/200x200?text=Game'}" 
                          alt="${escapeHtml(product.title)}" 
                          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                          loading="lazy">
+                    ${outOfStock ? outOfStockOverlay() : ''}
                 </div>
                 <div class="flex-1 p-4 flex flex-col justify-between min-w-0">
                     <div>
@@ -414,11 +791,10 @@
                         </p>
                     </div>
                     <div class="flex items-end justify-between mt-3">
-                        <div class="flex flex-col">
-                            ${prices.original && prices.original !== prices.current ? `<span class="text-slate-400 line-through text-sm">${prices.original}</span>` : ''}
-                            <span class="text-game-accent font-bold text-xl">${prices.current || 'Liên hệ'}</span>
-                        </div>
-                        <button type="button" 
+                        ${getPromoPriceHtml(product, 'text-xl')}
+                        ${outOfStock
+                            ? `<span class="px-4 py-2 bg-slate-200 text-slate-500 font-semibold rounded-lg cursor-not-allowed flex items-center gap-2">Hết hàng</span>`
+                            : `<button type="button" 
                                 class="px-4 py-2 bg-game-accent text-white font-semibold rounded-lg hover:bg-game-accent-hover transition-colors flex items-center gap-2 add-to-cart-btn"
                                 data-product-id="${product.id}"
                                 data-product-title="${escapeHtml(product.title)}"
@@ -429,7 +805,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                             </svg>
                             Mua ngay
-                        </button>
+                        </button>`}
                     </div>
                 </div>
             </a>
@@ -671,8 +1047,10 @@
         document.querySelector('input[name="category"][value=""]').checked = true;
         document.querySelector('input[name="price"][value=""]').checked = true;
         
-        // Redirect to main store page if on offline/online page
-        if (window.location.pathname.includes('/store/offline') || window.location.pathname.includes('/store/online')) {
+        // Redirect to main store page if on offline/online page or featured mode
+        if (window.location.pathname.includes('/store/offline') || 
+            window.location.pathname.includes('/store/online') ||
+            isFeaturedMode) {
             window.location.href = BASE_URL + '/store';
         } else {
             loadProducts();
@@ -702,9 +1080,21 @@
         if (urlParams.has('type')) {
             currentType = urlParams.get('type');
         }
+        
+        // Check for featured/recommendations mode
+        if (urlParams.has('featured') && urlParams.get('featured') === 'true') {
+            isFeaturedMode = true;
+            initFeaturedMode();
+        }
 
         loadCategories();
-        loadProducts();
+        
+        // Load appropriate content based on mode
+        if (isFeaturedMode) {
+            loadRecommendations();
+        } else {
+            loadProducts();
+        }
         updateActiveFilters();
 
         const searchInput = document.getElementById('search-input');

@@ -57,7 +57,7 @@
 
 @section('content')
     <!-- Hero Section -->
-    <section class="relative pt-28 md:pt-32 pb-4 overflow-hidden bg-gradient-to-br from-slate-50 via-indigo-50/50 to-purple-50/50">
+    <section class="relative pt-32 md:pt-36 pb-4 overflow-hidden bg-gradient-to-br from-slate-50 via-indigo-50/50 to-purple-50/50">
         <!-- Background -->
         <div class="absolute inset-0 z-0">
             <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=1920')] bg-cover bg-center opacity-5"></div>

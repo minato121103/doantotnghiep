@@ -21,11 +21,14 @@ class Order extends Model
         'notes',
         'completed_at',
         'cancelled_at',
+        'coupon_id',
+        'discount_amount',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'fee' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
         'completed_at' => 'datetime',
         'cancelled_at' => 'datetime',
     ];
@@ -61,6 +64,11 @@ class Order extends Model
     public function transactions()
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    public function coupon()
+    {
+        return $this->belongsTo(Coupon::class);
     }
 
     /**

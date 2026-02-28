@@ -8,6 +8,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\WalletController;
 use App\Http\Controllers\RecommendationController;
 use App\Http\Controllers\NewsController;
+use App\Http\Controllers\CommunityController;
+use App\Http\Controllers\ProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,6 +27,8 @@ Route::get('/', [MainController::class, 'index'])->name('home');
 Route::get('/store', [MainController::class, 'store'])->name('store');
 Route::get('/store/offline', [MainController::class, 'store'])->name('store.offline');
 Route::get('/store/online', [MainController::class, 'store'])->name('store.online');
+Route::get('/for-you', [MainController::class, 'forYou'])->name('for-you');
+Route::get('/promotions', [MainController::class, 'promotions'])->name('promotions');
 Route::get('/categories', [MainController::class, 'categories'])->name('categories');
 Route::get('/game/{id}', [MainController::class, 'gameDetail'])->name('game.detail');
 Route::get('/cart', [MainController::class, 'cart'])->name('cart');
@@ -34,6 +38,9 @@ Route::get('/wallet/vnpay/callback', [WalletController::class, 'callback'])->nam
 Route::get('/wallet/payment/callback', [MainController::class, 'paymentCallback'])->name('wallet.payment.callback');
 Route::get('/news', [MainController::class, 'news'])->name('news');
 Route::get('/news/{id}', [MainController::class, 'newsDetail'])->name('news.detail');
+Route::get('/community', [CommunityController::class, 'index'])->name('community');
+Route::get('/profile/{id?}', [ProfileController::class, 'index'])->name('profile');
+Route::get('/support', [MainController::class, 'support'])->name('support');
 
 // Authentication Routes
 Route::get('/login', [MainController::class, 'login'])->name('login');
@@ -88,4 +95,20 @@ Route::prefix('database')->name('database.')->group(function () {
     Route::get('/recommendations/history', [RecommendationController::class, 'trainingHistory'])->name('recommendations.history');
     Route::post('/recommendations/clear-cache', [RecommendationController::class, 'clearCache'])->name('recommendations.clear-cache');
     Route::delete('/recommendations/logs/{id}', [RecommendationController::class, 'deleteTrainingLog'])->name('recommendations.delete-log');
+
+    // Support Tickets Management
+    Route::get('/support-tickets', [DatabaseController::class, 'supportTickets'])->name('support-tickets');
+
+    // Community Posts Management
+    Route::get('/community-posts', [DatabaseController::class, 'communityPosts'])->name('community-posts');
+
+    // Promotions Management
+    Route::get('/promotions', [DatabaseController::class, 'promotions'])->name('promotions');
+    Route::get('/promotions/create', [DatabaseController::class, 'createPromotion'])->name('create-promotion');
+    Route::get('/promotions/{id}/edit', [DatabaseController::class, 'editPromotion'])->name('edit-promotion');
+
+    // Coupons Management
+    Route::get('/coupons', [DatabaseController::class, 'coupons'])->name('coupons');
+    Route::get('/coupons/create', [DatabaseController::class, 'createCoupon'])->name('create-coupon');
+    Route::get('/coupons/{id}/edit', [DatabaseController::class, 'editCoupon'])->name('edit-coupon');
 });

@@ -208,7 +208,7 @@
             <!-- Tab Content -->
             <div id="tab-description" class="tab-content">
                 <div id="product-detail-desc-wrapper" class="relative">
-                    <div id="product-detail-desc" class="prose prose-slate max-w-none overflow-hidden transition-all duration-300" style="max-height: 600px;">
+                    <div id="product-detail-desc" class="product-content prose prose-slate max-w-none overflow-hidden transition-all duration-300" style="max-height: 600px;">
                         <!-- Detail description will be loaded here -->
                     </div>
                     <!-- Gradient overlay khi thu gọn - giảm độ mờ -->
@@ -559,6 +559,90 @@
 
 @push('styles')
 <style>
+    /* Product Content Styles - giống như News */
+    .product-content {
+        font-size: 17px;
+        line-height: 1.9;
+        color: #374151;
+    }
+    .product-content h1 {
+        font-size: 2em;
+        font-weight: 700;
+        color: #1e293b;
+        margin-top: 1.5em;
+        margin-bottom: 0.5em;
+    }
+    .product-content h2 {
+        font-size: 1.5em;
+        font-weight: 700;
+        color: #1e293b;
+        margin-top: 1.5em;
+        margin-bottom: 0.5em;
+    }
+    .product-content h3 {
+        font-size: 1.25em;
+        font-weight: 600;
+        color: #1e293b;
+        margin-top: 1.25em;
+        margin-bottom: 0.5em;
+    }
+    .product-content p {
+        margin-bottom: 1.25em;
+    }
+    .product-content img,
+    .product-content .product-img {
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        border-radius: 12px;
+        margin: 1.5em 0;
+        display: block;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -1px rgb(0 0 0 / 0.06);
+    }
+    .product-content ul, .product-content ol {
+        margin-left: 1.5em;
+        margin-bottom: 1.25em;
+    }
+    .product-content li {
+        margin-bottom: 0.5em;
+    }
+    .product-content a {
+        color: #6366f1;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+    .product-content a:hover {
+        color: #4f46e5;
+    }
+    .product-content blockquote {
+        border-left: 4px solid #6366f1;
+        padding-left: 1.5em;
+        margin: 1.5em 0;
+        color: #64748b;
+        font-style: italic;
+        background: linear-gradient(to right, rgba(99, 102, 241, 0.05), transparent);
+        padding: 1em 1.5em;
+        border-radius: 0 8px 8px 0;
+    }
+    .product-content strong, .product-content b {
+        font-weight: 700;
+        color: #1e293b;
+    }
+    .product-content code {
+        background: #f1f5f9;
+        padding: 0.2em 0.4em;
+        border-radius: 4px;
+        font-size: 0.9em;
+    }
+    .product-content pre {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 1em;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 1.5em 0;
+    }
+    /* Prose fallback */
     .prose h2 { @apply text-xl font-bold text-slate-800 mt-6 mb-3; }
     .prose h3 { @apply text-lg font-semibold text-slate-800 mt-4 mb-2; }
     .prose p { @apply text-slate-600 mb-4 leading-relaxed; }
@@ -567,20 +651,6 @@
     .prose strong { @apply text-slate-800 font-semibold; }
     .prose img { @apply w-full rounded-xl shadow-md my-6; }
     .prose br { @apply block mb-2; }
-    /* Đảm bảo các đoạn văn có khoảng cách */
-    #product-detail-desc p {
-        margin-bottom: 1rem;
-        line-height: 1.75;
-    }
-    /* Đảm bảo hình ảnh hiển thị đúng */
-    #product-detail-desc img {
-        max-width: 100%;
-        height: auto;
-        display: block;
-        margin: 1.5rem 0;
-        border-radius: 0.75rem;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    }
     /* Style cho phần mô tả với chức năng Xem thêm */
     #product-detail-desc-wrapper {
         position: relative;
@@ -591,7 +661,7 @@
     }
     #description-fade {
         transition: opacity 0.3s ease-in-out;
-        opacity: 0.6; /* Giảm độ mờ */
+        opacity: 0.6;
     }
     #description-toggle-btn {
         transition: all 0.2s ease-in-out;
@@ -1203,8 +1273,7 @@
             `;
         }
 
-        // Render HTML trực tiếp từ Quill editor (y hệt như trong admin)
-        // Quill editor lưu HTML trực tiếp, không cần xử lý phức tạp
+        // Render HTML từ Quill editor
         let html = raw.trim();
         
         // Nếu HTML bị escape (có &lt; thay vì <), unescape nó
@@ -1212,178 +1281,58 @@
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = html;
             html = tempDiv.textContent || tempDiv.innerText || html;
-            // Nếu vẫn còn escape, thử unescape thủ công
             html = html.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
         }
         
-        // Loại bỏ các thuộc tính HTML bị hiển thị như text trong nội dung
-        // Sử dụng DOM để parse và clean HTML một cách chính xác
-        try {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = html;
-            
-            // Hàm để clean text node
-            function cleanTextNode(textNode) {
-                if (!textNode || !textNode.textContent) return;
-                
-                let text = textNode.textContent;
-                const originalText = text;
-                
-                // Loại bỏ các thuộc tính HTML trong text
-                text = text.replace(/\s+target\s*=\s*["']_blank["']/gi, '');
-                text = text.replace(/\s+target\s*=\s*["']_self["']/gi, '');
-                text = text.replace(/\s+target\s*=\s*["']_parent["']/gi, '');
-                text = text.replace(/\s+target\s*=\s*["']_top["']/gi, '');
-                text = text.replace(/\s+rel\s*=\s*["'][^"']*["']/gi, '');
-                text = text.replace(/\s+href\s*=\s*["'][^"']*["']/gi, '');
-                text = text.replace(/\s+class\s*=\s*["'][^"']*["']/gi, '');
-                text = text.replace(/\s+id\s*=\s*["'][^"']*["']/gi, '');
-                text = text.replace(/\s+style\s*=\s*["'][^"']*["']/gi, '');
-                
-                // Loại bỏ các pattern như: " target="_blank""
-                text = text.replace(/\s+target\s*=\s*_blank/gi, '');
-                text = text.replace(/\s+target\s*=\s*_self/gi, '');
-                text = text.replace(/\s+rel\s*=\s*[^\s<>"']+/gi, '');
-                
-                // Loại bỏ các ký tự còn sót lại từ thuộc tính HTML
-                // Pattern: "> hoặc " > hoặc " >" (các phần còn sót lại)
-                text = text.replace(/\s*["']\s*>\s*/g, '');
-                text = text.replace(/\s*>\s*/g, '');
-                text = text.replace(/\s*["']\s*/g, '');
-                
-                // Loại bỏ các pattern như: " target= hoặc "> hoặc " >
-                text = text.replace(/["']\s*target\s*=\s*/gi, '');
-                text = text.replace(/["']\s*rel\s*=\s*/gi, '');
-                text = text.replace(/["']\s*href\s*=\s*/gi, '');
-                text = text.replace(/["']\s*class\s*=\s*/gi, '');
-                text = text.replace(/["']\s*id\s*=\s*/gi, '');
-                text = text.replace(/["']\s*style\s*=\s*/gi, '');
-                
-                // Loại bỏ các ký tự đóng mở không hợp lệ
-                text = text.replace(/^\s*["']\s*>\s*/g, ''); // Bắt đầu với "> hoặc " >
-                text = text.replace(/\s*["']\s*>\s*$/g, ''); // Kết thúc với "> hoặc " >
-                
-                // Chỉ cập nhật nếu có thay đổi
-                if (text !== originalText) {
-                    textNode.textContent = text;
-                }
+        // Chuyển đổi thẻ <a> chứa URL ảnh thành thẻ <img>
+        // Pattern: <a href="image_url">image_url</a> -> <img src="image_url">
+        html = html.replace(/<a[^>]*href=["']([^"']+\.(?:jpg|jpeg|png|gif|webp|bmp|svg))(?:\?[^"']*)?["'][^>]*>([^<]*)<\/a>/gi, (match, href, text) => {
+            // Kiểm tra nếu text cũng là URL ảnh (link hiển thị URL)
+            if (text.trim().match(/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|bmp|svg)/i)) {
+                return `<img src="${href}" alt="${escapeHtml(product.title)}" class="product-img">`;
             }
-            
-            // Tìm và clean tất cả text nodes
-            const walker = document.createTreeWalker(
-                tempDiv,
-                NodeFilter.SHOW_TEXT,
-                null,
-                false
-            );
-            
-            const textNodes = [];
-            let node;
-            while (node = walker.nextNode()) {
-                textNodes.push(node);
-            }
-            
-            // Clean tất cả text nodes
-            textNodes.forEach(cleanTextNode);
-            
-            html = tempDiv.innerHTML;
-        } catch (e) {
-            console.warn('Error parsing HTML, using regex fallback:', e);
-            // Fallback: sử dụng regex mạnh hơn để loại bỏ
-            // Loại bỏ trong thẻ <p>
-            html = html.replace(/(<p[^>]*>)([^<]*?)\s+target\s*=\s*["']_blank["']([^<]*?)(<\/p>)/gi, '$1$2$3$4');
-            html = html.replace(/(<p[^>]*>)([^<]*?)\s+target\s*=\s*["']_self["']([^<]*?)(<\/p>)/gi, '$1$2$3$4');
-            html = html.replace(/(<p[^>]*>)([^<]*?)\s+rel\s*=\s*["'][^"']*["']([^<]*?)(<\/p>)/gi, '$1$2$3$4');
-            
-            // Loại bỏ các thuộc tính HTML đơn lẻ trong text (không trong thẻ HTML)
-            // Pattern: text trước + thuộc tính + text sau (không có < > xung quanh)
-            html = html.replace(/([^<>"']+?)\s+target\s*=\s*["']_blank["']([^<>"']*?)/gi, '$1$2');
-            html = html.replace(/([^<>"']+?)\s+target\s*=\s*["']_self["']([^<>"']*?)/gi, '$1$2');
-            html = html.replace(/([^<>"']+?)\s+rel\s*=\s*["'][^"']*["']([^<>"']*?)/gi, '$1$2');
-            
-            // Loại bỏ các pattern đơn giản hơn
-            html = html.replace(/\s+target\s*=\s*["']_blank["']/gi, '');
-            html = html.replace(/\s+target\s*=\s*["']_self["']/gi, '');
-            html = html.replace(/\s+rel\s*=\s*["'][^"']*["']/gi, '');
-        }
-        
-        // Bước cuối: loại bỏ các thuộc tính HTML còn sót lại bằng regex toàn cục
-        // Tìm pattern: khoảng trắng + thuộc tính HTML + giá trị trong text (không trong thẻ)
-        html = html.replace(/(?<!<[^>]*)\s+(target|rel|href|class|id|style)\s*=\s*["'][^"']*["'](?![^<]*>)/gi, '');
-        html = html.replace(/(?<!<[^>]*)\s+(target|rel|href|class|id|style)\s*=\s*[^\s<>"']+(?![^<]*>)/gi, '');
-        
-        // Bước clean cuối cùng: loại bỏ các thuộc tính HTML trong text content của các thẻ
-        // Pattern: >text có thuộc tính HTML< -> >text đã clean<
-        html = html.replace(/>([^<]*?)\s+(target|rel|href|class|id|style)\s*=\s*["'][^"']*["']([^<]*?)</gi, '>$1$3<');
-        html = html.replace(/>([^<]*?)\s+(target|rel|href|class|id|style)\s*=\s*[^\s<>"']+([^<]*?)</gi, '>$1$3<');
-        
-        // Loại bỏ các pattern cụ thể còn sót lại
-        html = html.replace(/\s+target\s*=\s*["']_blank["']/gi, '');
-        html = html.replace(/\s+target\s*=\s*["']_self["']/gi, '');
-        html = html.replace(/\s+target\s*=\s*_blank/gi, '');
-        html = html.replace(/\s+target\s*=\s*_self/gi, '');
-        html = html.replace(/\s+rel\s*=\s*["'][^"']*["']/gi, '');
-        
-        // Loại bỏ các ký tự còn sót lại từ thuộc tính HTML: "> hoặc " > hoặc " >"
-        html = html.replace(/>([^<]*?)\s*["']\s*>\s*([^<]*?)</gi, '>$1$2<');
-        html = html.replace(/([^<>"']+)\s*["']\s*>\s*([^<>"']+)/gi, '$1$2');
-        html = html.replace(/^\s*["']\s*>\s*/g, '');
-        html = html.replace(/\s*["']\s*>\s*$/g, '');
-        html = html.replace(/["']\s*>/g, '');
-        html = html.replace(/>\s*["']/g, '');
-        
-        // Loại bỏ các thẻ <p> chỉ chứa "> hoặc rỗng
-        html = html.replace(/<p[^>]*>\s*["']\s*>\s*<\/p>/gi, '');
-        html = html.replace(/<p[^>]*>\s*>\s*<\/p>/gi, '');
-        html = html.replace(/<p[^>]*>\s*["']\s*<\/p>/gi, '');
-        
-        // Đảm bảo các thẻ <p> có margin để tạo khoảng cách giữa các đoạn
-        // Quill editor tạo <p> tags cho mỗi đoạn, nhưng có thể thiếu styling
-        html = html.replace(/<p([^>]*)>/gi, (match, attrs) => {
-            // Nếu đã có class, thêm mb-4 nếu chưa có
-            if (match.includes('class=')) {
-                if (!match.includes('mb-')) {
-                    return match.replace(/class="([^"]*)"/, 'class="$1 mb-4"');
-                }
-                return match;
-            }
-            // Nếu chưa có class, thêm class="mb-4"
-            return `<p${attrs} class="mb-4">`;
+            return match; // Giữ nguyên nếu không phải link ảnh
         });
         
-        // Xử lý các thẻ <p><br></p> (dòng trống trong Quill) để tạo khoảng cách
-        html = html.replace(/<p[^>]*>\s*<br\s*\/?>\s*<\/p>/gi, '<p class="mb-4"><br></p>');
+        // Chuyển đổi URL ảnh đứng một mình (không trong thẻ) thành <img>
+        // Các patterns để nhận diện URL ảnh
+        const imagePatterns = [
+            // URL kết thúc bằng extension ảnh (không nằm trong src= hoặc href=)
+            /(?<!src=["'])(?<!href=["'])(https?:\/\/[^\s<>"']+\.(?:jpg|jpeg|png|gif|webp|bmp|svg|ico))(\?[^\s<>"']*)?(?![^<]*>)/gi,
+            // Cloudinary URLs
+            /(?<!src=["'])(?<!href=["'])(https?:\/\/res\.cloudinary\.com\/[^\s<>"']+)(?![^<]*>)/gi,
+            // Steam CDN
+            /(?<!src=["'])(?<!href=["'])(https?:\/\/(?:cdn\.cloudflare\.steamstatic\.com|steamcdn-a\.akamaihd\.net|store\.steampowered\.com)[^\s<>"']+)(?![^<]*>)/gi,
+            // Imgur
+            /(?<!src=["'])(?<!href=["'])(https?:\/\/(?:i\.)?imgur\.com\/[a-zA-Z0-9]+(?:\.(?:jpg|jpeg|png|gif|webp))?)(?![^<]*>)/gi,
+        ];
         
-        // Xử lý hình ảnh - đảm bảo các thẻ <img> có styling và responsive
-        html = html.replace(/<img([^>]*?)(?:\s+class="[^"]*")?([^>]*)>/gi, (match, before, after) => {
-            if (!match.includes('class=')) {
-                return `<img${before}${after} class="w-full rounded-xl shadow-md my-6">`;
-            } else if (!match.includes('w-full')) {
-                // Thêm w-full nếu chưa có
-                return match.replace(/class="([^"]*)"/, 'class="$1 w-full rounded-xl shadow-md my-6"');
+        imagePatterns.forEach(regex => {
+            html = html.replace(regex, (match, url) => {
+                // Kiểm tra xem URL đã được xử lý chưa
+                if (html.includes(`src="${url}"`) || html.includes(`src='${url}'`)) {
+                    return match;
+                }
+                return `<img src="${url}" alt="${escapeHtml(product.title)}" class="product-img">`;
+            });
+        });
+        
+        // Xử lý các thẻ <a> có text là URL ảnh (không có extension rõ ràng)
+        html = html.replace(/<a[^>]*href=["']([^"']+)["'][^>]*>(https?:\/\/[^\s<>"']+)<\/a>/gi, (match, href, text) => {
+            // Kiểm tra nếu URL có vẻ là ảnh (chứa image, img, photo, upload, cloudinary)
+            const isImageUrl = /\.(jpg|jpeg|png|gif|webp|bmp|svg|ico)(\?|$)/i.test(href) ||
+                               /(cloudinary|imgur|image|img|photo|upload|media)/i.test(href);
+            if (isImageUrl) {
+                return `<img src="${href}" alt="${escapeHtml(product.title)}" class="product-img">`;
             }
             return match;
         });
         
-        // Xử lý các URL ảnh đơn lẻ (không nằm trong thẻ <img> hoặc <a>) - chuyển thành thẻ <img>
-        // Chỉ xử lý URL ảnh đơn lẻ trong text, không nằm trong thẻ HTML
-        // Kiểm tra xem đã có thẻ <img> chưa
-        if (!html.includes('<img')) {
-            // Nếu chưa có thẻ <img>, tìm và chuyển đổi URL ảnh
-            const imgUrlRegex = /(https?:\/\/[^\s<>"']+?\.(jpe?g|png|webp|gif|jpg))/gi;
-            html = html.replace(imgUrlRegex, (url) => {
-                return `<img src="${url}" alt="${escapeHtml(product.title)}" class="w-full rounded-xl shadow-md my-6" />`;
-            });
-        }
-        
-        // Đảm bảo các thẻ <br> có spacing
-        html = html.replace(/<br\s*\/?>/gi, '<br class="mb-2">');
-        
-        // Render HTML trực tiếp - y hệt như trong Quill editor nhưng có thêm styling cơ bản
+        // Trả về HTML đã xử lý - CSS class .product-content sẽ xử lý styling
         return html;
     }
 
-    // Render mô tả ngắn (đơn giản hơn mô tả chi tiết)
+    // Render mô tả ngắn - giống như News
     function renderShortDescription(product) {
         const raw = product.short_description;
 
@@ -1392,108 +1341,30 @@
             return `<p>Tài khoản ${escapeHtml(product.title)} - Kích hoạt nhanh chóng, bảo hành trọn đời.</p>`;
         }
 
-        // Kiểm tra xem có phải HTML không
-        const htmlTagRegex = /<\/?[a-z][\s\S]*>/i;
-        const isHTML = htmlTagRegex.test(raw);
-        const hasCommonHTMLTags = raw.includes('<p>') || raw.includes('</p>') || 
-                                  raw.includes('<strong>') || raw.includes('<br>') ||
-                                  raw.includes('<ul>') || raw.includes('<li>');
-        
         let html = raw.trim();
         
-        if (isHTML || hasCommonHTMLTags) {
-            // Nếu là HTML, xử lý giống detail description
-            // Nếu HTML bị escape (có &lt; thay vì <), unescape nó
-            if (html.includes('&lt;') || html.includes('&gt;') || html.includes('&amp;')) {
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = html;
-                html = tempDiv.textContent || tempDiv.innerText || html;
-                html = html.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
-            }
-            
-            // Đảm bảo các thẻ <p> có margin để tạo khoảng cách
-            html = html.replace(/<p([^>]*)>/gi, (match, attrs) => {
-                if (!match.includes('class=')) {
-                    return `<p${attrs} class="mb-3">`;
-                } else if (!match.includes('mb-')) {
-                    return match.replace(/class="([^"]*)"/, 'class="$1 mb-3"');
-                }
-                return match;
-            });
-            
-            // Xử lý <br> tags
-            html = html.replace(/<br\s*\/?>/gi, '<br class="mb-2">');
-            
-            // Xử lý hình ảnh
-            html = html.replace(/<img([^>]*?)(?:\s+class="[^"]*")?([^>]*)>/gi, (match, before, after) => {
-                if (!match.includes('class=')) {
-                    return `<img${before}${after} class="w-full rounded-xl shadow-md my-4">`;
-                }
-                return match;
-            });
-            
-            // Xử lý các URL ảnh đơn lẻ
-            if (!html.includes('<img')) {
-                const imgUrlRegex = /(https?:\/\/[^\s<>"']+?\.(jpe?g|png|webp|gif|jpg))/gi;
-                html = html.replace(imgUrlRegex, (url) => {
-                    return `<img src="${url}" alt="${escapeHtml(product.title)}" class="w-full rounded-xl shadow-md my-4" />`;
-                });
-            }
-        } else {
-            // Nếu là text thuần, xử lý xuống dòng
-            // Chia thành các dòng và bọc mỗi dòng trong <p>
-            const lines = raw.split(/\r?\n/).filter(line => line.trim());
+        // Nếu HTML bị escape, unescape nó
+        if (html.includes('&lt;') || html.includes('&gt;') || html.includes('&amp;')) {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            html = tempDiv.textContent || tempDiv.innerText || html;
+            html = html.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+        }
+        
+        // Kiểm tra xem có phải HTML không
+        const isHTML = /<\/?[a-z][\s\S]*>/i.test(html);
+        
+        if (!isHTML) {
+            // Nếu là text thuần, bọc trong <p>
+            const lines = html.split(/\r?\n/).filter(line => line.trim());
             if (lines.length > 0) {
-                html = lines.map(line => {
-                    const trimmed = line.trim();
-                    if (!trimmed) return '';
-                    return `<p class="mb-3">${escapeHtml(trimmed)}</p>`;
-                }).join('\n');
+                html = lines.map(line => `<p>${escapeHtml(line.trim())}</p>`).join('\n');
             } else {
-                // Nếu không có dòng trống, chia theo dấu chấm hoặc dấu phẩy
-                html = `<p class="mb-3">${escapeHtml(raw)}</p>`;
+                html = `<p>${escapeHtml(html)}</p>`;
             }
         }
-        
+        // Trả về HTML trực tiếp - CSS sẽ xử lý styling
         return html;
-    }
-
-    // Hàm helper để clean HTML attributes trong một element
-    function cleanHTMLAttributes(element) {
-        if (!element) return;
-        
-        const textNodes = [];
-        const walker = document.createTreeWalker(
-            element,
-            NodeFilter.SHOW_TEXT,
-            null,
-            false
-        );
-        
-        let node;
-        while (node = walker.nextNode()) {
-            if (node.textContent) {
-                let text = node.textContent;
-                const originalText = text;
-                
-                // Loại bỏ tất cả các thuộc tính HTML trong text
-                text = text.replace(/\s+(target|rel|href|class|id|style)\s*=\s*["'][^"']*["']/gi, '');
-                text = text.replace(/\s+(target|rel|href|class|id|style)\s*=\s*[^\s<>"']+/gi, '');
-                
-                // Loại bỏ các ký tự còn sót lại: "> hoặc " > hoặc " >"
-                text = text.replace(/\s*["']\s*>\s*/g, '');
-                text = text.replace(/^\s*["']\s*>\s*/g, '');
-                text = text.replace(/\s*["']\s*>\s*$/g, '');
-                text = text.replace(/["']\s*>/g, '');
-                text = text.replace(/>\s*["']/g, '');
-                text = text.replace(/^\s*["']\s*>\s*/g, '');
-                text = text.replace(/\s*["']\s*>\s*$/g, '');
-                
-                if (text !== originalText) {
-                    node.textContent = text;
-                }
-            }
-        }
     }
 
     function generateStars(rating) {
@@ -1631,77 +1502,36 @@
         const shortDescElement = document.getElementById('product-short-desc');
         const shortDescHTML = renderShortDescription(product);
         shortDescElement.innerHTML = shortDescHTML;
-        
-        // Clean short description sau khi render
-        cleanHTMLAttributes(shortDescElement);
 
-        // Giá sản phẩm (gốc + sau giảm nếu có)
         const prices = extractPrices(product.price);
-        if (prices.original && prices.original !== prices.current) {
-            document.getElementById('product-original-price').textContent = prices.original;
+        if (product.sale_price) {
+            document.getElementById('product-original-price').textContent = prices.current || product.price;
             document.getElementById('product-original-price').classList.remove('hidden');
-        }
-        document.getElementById('product-current-price').textContent = prices.current || 'Liên hệ';
-        
-        if (discount > 0) {
-            document.getElementById('product-discount').textContent = `-${discount}%`;
+            document.getElementById('product-current-price').textContent = new Intl.NumberFormat('vi-VN').format(Math.round(product.sale_price)) + 'đ';
+            document.getElementById('product-discount').textContent = `-${product.discount_percent}%`;
             document.getElementById('product-discount').classList.remove('hidden');
+        } else {
+            if (prices.original && prices.original !== prices.current) {
+                document.getElementById('product-original-price').textContent = prices.original;
+                document.getElementById('product-original-price').classList.remove('hidden');
+            }
+            document.getElementById('product-current-price').textContent = prices.current || 'Liên hệ';
+            if (discount > 0) {
+                document.getElementById('product-discount').textContent = `-${discount}%`;
+                document.getElementById('product-discount').classList.remove('hidden');
+            }
         }
 
-        // Mô tả chi tiết: render HTML từ dữ liệu trong database
+        // Mô tả chi tiết: render HTML từ dữ liệu trong database - giống như News
         const detailDescElement = document.getElementById('product-detail-desc');
         const detailDescWrapper = document.getElementById('product-detail-desc-wrapper');
         const fadeOverlay = document.getElementById('description-fade');
         const toggleContainer = document.getElementById('description-toggle-container');
         const toggleBtn = document.getElementById('description-toggle-btn');
         
-        let renderedHTML = renderDetailDescription(product);
-        
-        // Log debug nội dung mô tả chi tiết
-        console.log('Detail description raw (first 500 chars):', product.detail_description ? product.detail_description.substring(0, 500) : 'empty');
-        console.log('Rendered HTML (first 500 chars):', renderedHTML ? renderedHTML.substring(0, 500) : 'empty');
-        
-        // Render HTML trực tiếp (không escape) - innerHTML sẽ tự động parse HTML
+        // Render HTML trực tiếp giống như News
+        const renderedHTML = renderDetailDescription(product);
         detailDescElement.innerHTML = renderedHTML;
-        
-        // Clean thêm lần nữa các thuộc tính HTML dư sau khi render
-        const textNodes = [];
-        const walker = document.createTreeWalker(
-            detailDescElement,
-            NodeFilter.SHOW_TEXT,
-            null,
-            false
-        );
-        
-        let node;
-        while (node = walker.nextNode()) {
-            if (node.textContent) {
-                let text = node.textContent;
-                const originalText = text;
-                
-                // Loại bỏ tất cả các thuộc tính HTML trong text
-                text = text.replace(/\s+(target|rel|href|class|id|style)\s*=\s*["'][^"']*["']/gi, '');
-                text = text.replace(/\s+(target|rel|href|class|id|style)\s*=\s*[^\s<>"']+/gi, '');
-                
-                // Loại bỏ các ký tự còn sót lại: "> hoặc " > hoặc " >"
-                text = text.replace(/\s*["']\s*>\s*/g, '');
-                text = text.replace(/^\s*["']\s*>\s*/g, '');
-                text = text.replace(/\s*["']\s*>\s*$/g, '');
-                
-                // Loại bỏ các pattern như: "> đơn lẻ
-                text = text.replace(/["']\s*>/g, '');
-                text = text.replace(/>\s*["']/g, '');
-                
-                // Loại bỏ các ký tự quotes và > đơn lẻ không hợp lệ
-                text = text.replace(/^\s*["']\s*>\s*/g, '');
-                text = text.replace(/\s*["']\s*>\s*$/g, '');
-                
-                // Chỉ cập nhật nếu có thay đổi
-                if (text !== originalText) {
-                    node.textContent = text;
-                }
-            }
-        }
         
         // Nếu mô tả dài, hiển thị nút "Xem thêm / Thu gọn"
         setTimeout(() => {
@@ -1754,6 +1584,23 @@
                     <span class="text-xs text-slate-500 w-8 text-right">0</span>
             </div>
         `).join('');
+        }
+
+        // Hết hàng: vô hiệu hóa nút Thêm giỏ & Mua ngay, hiển thị Hết hàng
+        const outOfStock = (product.available_accounts || 0) === 0;
+        const addBtn = document.getElementById('add-to-cart-btn');
+        const buyBtn = document.getElementById('buy-now-btn');
+        if (outOfStock && addBtn) {
+            addBtn.disabled = true;
+            addBtn.classList.remove('bg-gradient-to-r', 'from-game-accent', 'to-game-purple', 'hover:opacity-90', 'glow-effect');
+            addBtn.classList.add('bg-slate-300', 'cursor-not-allowed', 'opacity-75');
+            addBtn.innerHTML = '<span class="font-bold">Hết hàng</span>';
+        }
+        if (outOfStock && buyBtn) {
+            buyBtn.disabled = true;
+            buyBtn.classList.remove('bg-game-orange', 'hover:bg-orange-600');
+            buyBtn.classList.add('bg-slate-300', 'cursor-not-allowed', 'opacity-75');
+            buyBtn.innerHTML = 'Hết hàng';
         }
 
         // Ẩn phần loading, hiển thị nội dung chính
@@ -1829,9 +1676,20 @@
                 return;
             }
 
+            const outOfStockOverlay = () => '<div class="absolute inset-0 flex items-center justify-center bg-white/75 z-10"><span class="font-bold text-slate-700 text-sm">Hết hàng</span></div>';
             container.innerHTML = related.map(product => {
-                const prices = extractPrices(product.price);
-                const discount = calculateDiscount(product.price);
+                const discount = product.discount_percent || calculateDiscount(product.price);
+                const outOfStock = (product.available_accounts || 0) === 0;
+                let priceHtml;
+                if (product.sale_price) {
+                    const prices = extractPrices(product.price);
+                    priceHtml = `<span class="text-slate-400 line-through text-xs">${prices.current || product.price}</span>
+                        <span class="text-game-accent font-bold">${new Intl.NumberFormat('vi-VN').format(Math.round(product.sale_price))}đ</span>`;
+                } else {
+                    const prices = extractPrices(product.price);
+                    priceHtml = `${prices.original && prices.original !== prices.current ? `<span class="text-slate-400 line-through text-xs">${prices.original}</span>` : ''}
+                        <span class="text-game-accent font-bold">${prices.current || 'Liên hệ'}</span>`;
+                }
 
                 return `
                     <a href="${GAME_BASE_URL}/${product.id}" class="group bg-white rounded-xl overflow-hidden border border-slate-200 hover:border-game-accent hover:shadow-lg transition-all card-hover flex">
@@ -1839,7 +1697,8 @@
                             <img src="${product.image || 'https://via.placeholder.com/150x150?text=Game'}" 
                                  alt="${escapeHtml(product.title)}" 
                                  class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
-                            ${discount > 0 ? `<div class="absolute top-1 right-1 px-1.5 py-0.5 bg-game-green text-white text-[10px] font-bold rounded">-${discount}%</div>` : ''}
+                            ${outOfStock ? outOfStockOverlay() : ''}
+                            ${!outOfStock && discount > 0 ? `<div class="absolute top-1 right-1 px-1.5 py-0.5 bg-game-green text-white text-[10px] font-bold rounded">-${discount}%</div>` : ''}
                         </div>
                         <div class="flex-1 py-3 pr-3 flex flex-col justify-between min-w-0">
                             <div>
@@ -1851,8 +1710,7 @@
                                 </div>
                             </div>
                             <div class="flex items-center gap-2 mt-2">
-                                ${prices.original && prices.original !== prices.current ? `<span class="text-slate-400 line-through text-xs">${prices.original}</span>` : ''}
-                                <span class="text-game-accent font-bold">${prices.current || 'Liên hệ'}</span>
+                                ${priceHtml}
                             </div>
                         </div>
                     </a>
@@ -1930,6 +1788,7 @@
     // Thêm sản phẩm vào giỏ hàng (localStorage)
     document.getElementById('add-to-cart-btn').addEventListener('click', () => {
         if (!productData) return;
+        if ((productData.available_accounts || 0) === 0) return; // Hết hàng không cho thêm giỏ
         
         const qty = parseInt(document.getElementById('qty-input').value) || 1;
         
@@ -1996,11 +1855,10 @@
         return 0;
     }
 
-    // Update buy modal
     function updateBuyModal() {
         if (!productData) return;
         
-        buyPrice = extractPriceNumber(productData.price);
+        buyPrice = productData.sale_price ? productData.sale_price : extractPriceNumber(productData.price);
         const total = buyPrice * buyQuantity;
         
         document.getElementById('buy-modal-image').src = productData.image || 'https://via.placeholder.com/150';

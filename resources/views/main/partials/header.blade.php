@@ -185,14 +185,29 @@
                     <a href="{{ url('/store') }}" class="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium">
                         Khám phá
                     </a>
+                    <a href="{{ url('/for-you') }}" class="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium flex items-center gap-1">
+                        <svg class="w-4 h-4 text-game-pink" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                        </svg>
+                        Dành cho bạn
+                    </a>
                     <a href="{{ url('/store/offline') }}" class="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium">
                         Game Offline
                     </a>
                     <a href="{{ url('/store/online') }}" class="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium">
                         Game Online
                     </a>
+                    <a href="{{ url('/promotions') }}" class="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium flex items-center gap-1">
+                        <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                        </svg>
+                        Ưu đãi
+                    </a>
                     <a href="{{ url('/news') }}" class="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium">
                         Tin tức
+                    </a>
+                    <a href="{{ url('/community') }}" class="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium">
+                        Cộng đồng
                     </a>
                     <a href="{{ url('/support') }}" class="px-4 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium">
                         Hỗ trợ
@@ -220,8 +235,20 @@
             <div class="flex flex-col space-y-2">
                 <a href="{{ url('/') }}" class="px-4 py-3 text-white hover:bg-slate-800 rounded-lg transition-colors">Trang chủ</a>
                 <a href="{{ url('/store') }}" class="px-4 py-3 text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">Khám phá</a>
+                <a href="{{ url('/for-you') }}" class="px-4 py-3 text-slate-300 hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4 text-game-pink" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                    Dành cho bạn
+                </a>
                 <a href="{{ url('/store/offline') }}" class="px-4 py-3 text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">Game Offline</a>
                 <a href="{{ url('/store/online') }}" class="px-4 py-3 text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">Game Online</a>
+                <a href="{{ url('/promotions') }}" class="px-4 py-3 text-slate-300 hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                    </svg>
+                    Ưu đãi
+                </a>
                 <a href="{{ url('/categories') }}" class="px-4 py-3 text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">Danh mục</a>
             </div>
 
