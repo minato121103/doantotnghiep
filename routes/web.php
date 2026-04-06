@@ -85,6 +85,7 @@ Route::prefix('database')->name('database.')->group(function () {
     Route::get('/reviews', [DatabaseController::class, 'reviews'])->name('reviews');
     Route::get('/transactions', [DatabaseController::class, 'transactions'])->name('transactions');
     Route::get('/steam-accounts', [DatabaseController::class, 'steamAccounts'])->name('steam-accounts');
+    Route::get('/steam-account-games', [DatabaseController::class, 'steamAccountGames'])->name('steam-account-games');
     Route::get('/discussions', [DatabaseController::class, 'discussions'])->name('discussions');
     Route::get('/table/{tableName}/structure', [DatabaseController::class, 'tableStructure'])->name('table-structure');
     

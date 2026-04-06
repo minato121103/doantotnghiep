@@ -153,9 +153,8 @@
     </section>
 
     <!-- 3. Ưu đãi (Special Offers) -->
-    <section class="py-10 bg-gradient-to-r from-indigo-50 to-purple-50 relative overflow-hidden">
+    <section id="promo-section" class="py-10 bg-gradient-to-r from-indigo-50 to-purple-50 relative overflow-hidden">
         <div class="absolute inset-0 bg-gradient-to-r from-game-purple/10 to-game-accent/10"></div>
-        <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=1920')] bg-cover bg-center opacity-5"></div>
         
         <div class="container mx-auto px-4 relative z-10">
             <div class="flex flex-col lg:flex-row items-center justify-between gap-8">
@@ -163,10 +162,10 @@
                     <div class="inline-flex items-center px-4 py-2 bg-game-orange/10 text-game-orange rounded-full text-sm font-medium mb-4">
                         🔥 Ưu đãi có hạn
                     </div>
-                    <h2 class="font-display text-3xl md:text-4xl font-bold text-slate-800 mb-4">
-                        Giảm giá lên đến <span class="gradient-text">50%</span>
+                    <h2 id="promo-heading" class="font-display text-3xl md:text-4xl font-bold text-slate-800 mb-4">
+                        Giảm giá lên đến <span id="promo-discount-badge" class="gradient-text">50%</span>
                     </h2>
-                    <p class="text-slate-600 text-lg mb-6 max-w-lg">
+                    <p id="promo-description" class="text-slate-600 text-lg mb-6 max-w-lg">
                         Nhanh tay sở hữu những tựa game hot nhất với giá ưu đãi. Chương trình có hạn!
                     </p>
                     <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
@@ -175,37 +174,8 @@
                         </a>
                     </div>
                 </div>
-                
-                <!-- Countdown Timer -->
-                <div class="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-slate-200 shadow-lg">
-                    <p class="text-slate-600 text-center mb-4">Kết thúc sau</p>
-                    <div class="flex gap-4">
-                        <div class="text-center">
-                            <div class="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center mb-2">
-                                <span class="font-display text-2xl font-bold text-slate-800" id="countdown-days">02</span>
-                            </div>
-                            <span class="text-slate-500 text-xs">Ngày</span>
-                        </div>
-                        <div class="text-center">
-                            <div class="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center mb-2">
-                                <span class="font-display text-2xl font-bold text-slate-800" id="countdown-hours">12</span>
-                            </div>
-                            <span class="text-slate-500 text-xs">Giờ</span>
-                        </div>
-                        <div class="text-center">
-                            <div class="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center mb-2">
-                                <span class="font-display text-2xl font-bold text-slate-800" id="countdown-minutes">45</span>
-                            </div>
-                            <span class="text-slate-500 text-xs">Phút</span>
-                        </div>
-                        <div class="text-center">
-                            <div class="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center mb-2">
-                                <span class="font-display text-2xl font-bold text-game-accent" id="countdown-seconds">30</span>
-                            </div>
-                            <span class="text-slate-500 text-xs">Giây</span>
-                        </div>
-                    </div>
-                </div>
+
+
             </div>
         </div>
     </section>

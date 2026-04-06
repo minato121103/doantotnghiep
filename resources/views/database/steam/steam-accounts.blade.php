@@ -146,8 +146,9 @@
                         <input type="text" name="email_password" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Game IDs * <span class="text-gray-400">(cách nhau bởi dấu phẩy)</span></label>
-                        <input type="text" name="game_ids" required placeholder="1, 2, 3" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Game IDs <span class="text-gray-400">(tùy chọn, cách nhau bởi dấu phẩy)</span></label>
+                        <input type="text" name="game_ids" placeholder="1, 2, 3" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
+                        <p class="text-xs text-gray-500 mt-1">Có thể để trống và gán game sau tại trang <strong>Quản lý Steam Account Games</strong></p>
                     </div>
                     <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition">Thêm tài khoản</button>
                 </form>
@@ -474,18 +475,17 @@
         const formData = new FormData(e.target);
         const gameIds = formData.get('game_ids') ? formData.get('game_ids').split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
         
-        if (gameIds.length === 0) {
-            alert('Vui lòng nhập ít nhất 1 Game ID');
-            return;
-        }
-        
         const data = {
             username: formData.get('username'),
             password: formData.get('password'),
             email: formData.get('email') || null,
             email_password: formData.get('email_password') || null,
-            games: gameIds
         };
+
+        // Only include games if provided
+        if (gameIds.length > 0) {
+            data.games = gameIds;
+        }
         
         const token = getToken();
         try {

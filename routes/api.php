@@ -106,6 +106,18 @@ Route::prefix('steam-accounts')->group(function () {
     Route::delete('/{id}', [SteamAccountController::class, 'destroy']);
 });
 
+// Steam Account Games API Routes (Admin only)
+Route::prefix('steam-account-games')->group(function () {
+    Route::get('/', [\App\Http\Controllers\SteamAccountGameController::class, 'index']);
+    Route::post('/', [\App\Http\Controllers\SteamAccountGameController::class, 'store']);
+    Route::post('/batch', [\App\Http\Controllers\SteamAccountGameController::class, 'batchStore']);
+    Route::get('/stats', [\App\Http\Controllers\SteamAccountGameController::class, 'stats']);
+    Route::get('/{id}', [\App\Http\Controllers\SteamAccountGameController::class, 'show']);
+    Route::put('/{id}', [\App\Http\Controllers\SteamAccountGameController::class, 'update']);
+    Route::patch('/{id}', [\App\Http\Controllers\SteamAccountGameController::class, 'update']);
+    Route::delete('/{id}', [\App\Http\Controllers\SteamAccountGameController::class, 'destroy']);
+});
+
 // Order API Routes
 Route::middleware('auth:sanctum')->prefix('orders')->group(function () {
     // Get all orders (user sees own, admin sees all)

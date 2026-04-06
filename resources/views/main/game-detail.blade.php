@@ -110,7 +110,7 @@
                     </div>
 
                     <!-- Delivery Info -->
-                    <div class="grid grid-cols-3 gap-4">
+                    <div class="grid grid-cols-2 gap-4">
                         <div class="bg-white rounded-xl p-4 border border-slate-200 text-center">
                             <div class="text-game-accent mb-2">
                                 <svg class="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -128,15 +128,6 @@
                             </div>
                             <div class="text-xs text-slate-500">Bảo hành</div>
                             <div class="text-sm font-semibold text-slate-800">Trọn đời</div>
-                        </div>
-                        <div class="bg-white rounded-xl p-4 border border-slate-200 text-center">
-                            <div class="text-game-purple mb-2">
-                                <svg class="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                                </svg>
-                            </div>
-                            <div class="text-xs text-slate-500">Gửi qua</div>
-                            <div class="text-sm font-semibold text-slate-800">Email</div>
                         </div>
                     </div>
 
@@ -172,21 +163,7 @@
                         </button>
                     </div>
 
-                    <!-- Wishlist & Share -->
-                    <div class="flex items-center gap-4 pt-4 border-t border-slate-200">
-                        <button class="flex items-center gap-2 text-slate-600 hover:text-game-accent transition-colors">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
-                            </svg>
-                            Yêu thích
-                        </button>
-                        <button class="flex items-center gap-2 text-slate-600 hover:text-game-accent transition-colors">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
-                            </svg>
-                            Chia sẻ
-                        </button>
-                    </div>
+                    <!-- Wishlist & Share removed per request -->
                 </div>
             </div>
         </div>

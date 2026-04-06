@@ -43,10 +43,10 @@
                 <h4 class="font-heading text-lg font-semibold text-slate-800 mb-4">Liên kết nhanh</h4>
                 <ul class="space-y-3">
                     <li><a href="{{ url('/store') }}" class="text-slate-600 hover:text-game-accent transition-colors">Khám phá</a></li>
-                    <li><a href="{{ url('/categories') }}" class="text-slate-600 hover:text-game-accent transition-colors">Danh mục game</a></li>
-                    <li><a href="{{ url('/deals') }}" class="text-slate-600 hover:text-game-accent transition-colors">Khuyến mãi</a></li>
+                    <li><a href="{{ url('/for-you') }}" class="text-slate-600 hover:text-game-accent transition-colors">Dành cho bạn</a></li>
+                    <li><a href="{{ url('/promotions') }}" class="text-slate-600 hover:text-game-accent transition-colors">Khuyến mãi</a></li>
                     <li><a href="{{ url('/news') }}" class="text-slate-600 hover:text-game-accent transition-colors">Tin tức</a></li>
-                    <li><a href="{{ url('/about') }}" class="text-slate-600 hover:text-game-accent transition-colors">Về chúng tôi</a></li>
+                    <li><a href="{{ url('/community') }}" class="text-slate-600 hover:text-game-accent transition-colors">Cộng đồng</a></li>
                 </ul>
             </div>
             
@@ -57,9 +57,6 @@
                     <li><a href="{{ url('/support') }}" class="text-slate-600 hover:text-game-accent transition-colors">Trung tâm hỗ trợ</a></li>
                     <li><a href="{{ url('/support') }}#faq-section" class="text-slate-600 hover:text-game-accent transition-colors">FAQ</a></li>
                     <li><a href="{{ url('/support') }}#contact-section" class="text-slate-600 hover:text-game-accent transition-colors">Liên hệ</a></li>
-                    <li><a href="{{ url('/terms') }}" class="text-slate-600 hover:text-game-accent transition-colors">Điều khoản dịch vụ</a></li>
-                    <li><a href="{{ url('/privacy') }}" class="text-slate-600 hover:text-game-accent transition-colors">Chính sách bảo mật</a></li>
-                    <li><a href="{{ url('/support') }}#ticket-section" class="text-slate-600 hover:text-game-accent transition-colors">Chính sách hoàn tiền</a></li>
                 </ul>
             </div>
             
@@ -84,7 +81,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                         </svg>
-                        <span>123 Nguyễn Văn Linh, Quận 7, TP.HCM</span>
+                        <span>Trường Công Nghệ Thông Tin, Đại học Phenikaa</span>
                     </li>
                 </ul>
             </div>

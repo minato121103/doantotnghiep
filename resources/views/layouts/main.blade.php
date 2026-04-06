@@ -146,7 +146,8 @@
             --msg-text: #081c36;
             --msg-text-secondary: #7589a3;
             --msg-border: #dfe2e7;
-            --msg-sent-bg: #E5EFFF;
+            --msg-sent-bg: #0068FF;
+            --msg-sent-text: #ffffff;
             --msg-received-bg: #ffffff;
             --msg-online: #2ecc71;
         }
@@ -476,7 +477,7 @@
         .msg-msg-group.sent { align-items: flex-end; }
         .msg-msg-group.received { align-items: flex-start; }
 
-        .msg-msg {
+        .msg-bubble {
             max-width: 70%;
             padding: 10px 14px;
             font-size: 14px;
@@ -484,20 +485,20 @@
             word-wrap: break-word;
             position: relative;
         }
-        .msg-msg.sent {
+        .msg-bubble.sent {
             background: var(--msg-sent-bg);
-            color: var(--msg-text);
+            color: var(--msg-sent-text, #fff);
             border-radius: 18px 18px 4px 18px;
         }
-        .msg-msg.received {
+        .msg-bubble.received {
             background: var(--msg-received-bg);
             color: var(--msg-text);
             border-radius: 18px 18px 18px 4px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
         }
         
         /* System/Support Messages */
-        .msg-msg.system-msg {
+        .msg-bubble.system-msg {
             max-width: 85%;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: #fff;
@@ -506,18 +507,18 @@
             line-height: 1.6;
             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         }
-        .msg-msg.system-msg.sent {
+        .msg-bubble.system-msg.sent {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: #fff;
         }
 
-        .msg-msg-time {
+        .msg-time {
             font-size: 11px;
             color: var(--msg-text-secondary);
             margin-top: 3px;
             padding: 0 4px;
         }
-        .msg-msg-time.sent { text-align: right; }
+        .msg-time.sent { text-align: right; }
 
         .msg-date-divider {
             text-align: center;
@@ -823,82 +824,163 @@
             background: #fff;
         }
         .chatbot-header {
-            background: #fff;
-            color: #374151;
-            padding: 14px 20px;
             display: flex;
             align-items: center;
             gap: 12px;
-            border-bottom: 1px solid #e9ecef;
+            padding: 12px 16px;
+            background: #fff;
+            border-bottom: 1px solid var(--msg-border, #dfe2e7);
         }
-        .chatbot-header .material-icons-round {
-            font-size: 26px;
-            color: #667eea;
-        }
-        .chatbot-header-title {
-            flex: 1;
-            font-weight: 600;
-            font-size: 15px;
-        }
-        .chatbot-header-subtitle {
-            font-size: 12px;
-            color: #6b7280;
-            font-weight: normal;
-        }
-        .chatbot-header-close {
-            background: #f3f4f6;
-            border: none;
-            color: #6b7280;
-            width: 32px;
-            height: 32px;
+        .chatbot-header-avatar {
+            position: relative;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
-            cursor: pointer;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.2s;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        .chatbot-header-avatar .material-icons-round { font-size: 22px; }
+        .chatbot-header-avatar .cb-online-dot {
+            position: absolute;
+            bottom: 1px;
+            right: 1px;
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            background: var(--msg-online, #2ecc71);
+            border: 2px solid #fff;
+        }
+        .chatbot-header-info { flex: 1; min-width: 0; }
+        .chatbot-header-title {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--msg-text, #081c36);
+        }
+        .chatbot-header-status {
+            font-size: 12px;
+            color: var(--msg-online, #2ecc71);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .chatbot-header-status::before {
+            content: '';
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--msg-online, #2ecc71);
+        }
+        .chatbot-header-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--msg-text-secondary, #7589a3);
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
         }
         .chatbot-header-close:hover {
-            background: #e5e7eb;
-            color: #374151;
+            background: var(--msg-bg, #f0f2f5);
+            color: var(--msg-text, #081c36);
         }
         
         .chatbot-messages {
             flex: 1;
             overflow-y: auto;
             padding: 16px;
-            background: #f8f9fa;
+            background: var(--msg-chat-bg, #e8ecf1);
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 4px;
+            scrollbar-width: thin;
+            scrollbar-color: #c4c9d0 transparent;
         }
-        
-        .chatbot-msg {
-            max-width: 85%;
-            padding: 12px 16px;
-            border-radius: 16px;
-            font-size: 14px;
-            line-height: 1.5;
-            word-wrap: break-word;
+        .chatbot-messages::-webkit-scrollbar { width: 6px; }
+        .chatbot-messages::-webkit-scrollbar-track { background: transparent; }
+        .chatbot-messages::-webkit-scrollbar-thumb { background: #c4c9d0; border-radius: 3px; }
+
+        /* Message row — avatar + bubble */
+        .cb-msg-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 2px;
+            animation: cbFadeIn .25s ease;
         }
-        .chatbot-msg.bot {
-            background: #fff;
-            color: #374151;
-            align-self: flex-start;
-            border: 1px solid #e5e7eb;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        .cb-msg-row.bot { align-self: flex-start; max-width: 88%; }
+        .cb-msg-row.user { align-self: flex-end; max-width: 75%; flex-direction: row-reverse; }
+
+        @keyframes cbFadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
-        .chatbot-msg.user {
+
+        /* Bot avatar */
+        .cb-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: #fff;
             align-self: flex-end;
         }
-        .chatbot-msg.bot strong {
-            color: #667eea;
+        .cb-avatar .material-icons-round { font-size: 18px; }
+
+        /* Content wrapper */
+        .cb-content { display: flex; flex-direction: column; min-width: 0; }
+
+        /* Sender name */
+        .cb-name {
+            font-size: 11px;
+            color: var(--msg-text-secondary, #7589a3);
             font-weight: 600;
+            margin-bottom: 2px;
+            padding-left: 4px;
         }
-        .chatbot-msg.bot a,
-        .chatbot-msg.bot .chatbot-link {
+
+        /* Bubble */
+        .cb-bubble {
+            padding: 10px 14px;
+            font-size: 14px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+        .cb-bubble.bot {
+            background: var(--msg-received-bg, #ffffff);
+            color: var(--msg-text, #081c36);
+            border-radius: 18px 18px 18px 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+        }
+        .cb-bubble.user {
+            background: var(--msg-sent-bg, #E5EFFF);
+            color: var(--msg-text, #081c36);
+            border-radius: 18px 18px 4px 18px;
+        }
+
+        /* Timestamp */
+        .cb-time {
+            font-size: 11px;
+            color: var(--msg-text-secondary, #7589a3);
+            margin-top: 3px;
+            padding: 0 4px;
+        }
+        .cb-msg-row.user .cb-time { text-align: right; }
+
+        /* Links inside bot bubble */
+        .cb-bubble.bot strong { color: #667eea; font-weight: 600; }
+        .cb-bubble.bot a,
+        .cb-bubble.bot .chatbot-link {
             color: #667eea;
             text-decoration: none;
             cursor: pointer;
@@ -906,27 +988,24 @@
             border-bottom: 1px dotted #667eea;
             padding-bottom: 1px;
         }
-        .chatbot-msg.bot a:hover,
-        .chatbot-msg.bot .chatbot-link:hover {
+        .cb-bubble.bot a:hover,
+        .cb-bubble.bot .chatbot-link:hover {
             color: #4c51bf;
-            text-decoration: none;
             border-bottom: 2px solid #4c51bf;
-            background-color: rgba(102, 126, 234, 0.1);
+            background-color: rgba(102, 126, 234, 0.08);
             border-radius: 2px;
         }
-        .chatbot-msg.bot a strong,
-        .chatbot-msg.bot .chatbot-link strong {
-            font-weight: 600;
-        }
-        
+
+        /* Suggestions */
         .chatbot-suggestions {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
             margin-top: 8px;
+            padding-left: 38px;
         }
         .chatbot-suggestion-btn {
-            background: #fff;
+            background: var(--msg-received-bg, #fff);
             border: 1px solid #667eea;
             color: #667eea;
             padding: 8px 14px;
@@ -939,87 +1018,93 @@
             background: #667eea;
             color: #fff;
         }
-        
+
+        /* Feedback */
         .chatbot-feedback {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             margin-top: 8px;
         }
         .chatbot-feedback-btn {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            padding: 4px 10px;
+            background: rgba(0,0,0,0.04);
+            border: 1px solid rgba(0,0,0,0.08);
+            padding: 3px 10px;
             border-radius: 12px;
-            font-size: 12px;
+            font-size: 11px;
             cursor: pointer;
             transition: all 0.2s;
+            color: var(--msg-text-secondary, #7589a3);
         }
-        .chatbot-feedback-btn:hover {
-            background: #e9ecef;
-        }
+        .chatbot-feedback-btn:hover { background: rgba(0,0,0,0.08); }
         .chatbot-feedback-btn.selected {
             background: #667eea;
             color: #fff;
             border-color: #667eea;
         }
-        
+
+        /* Input area */
         .chatbot-input-area {
             display: flex;
-            align-items: center;
-            gap: 10px;
+            align-items: flex-end;
+            gap: 8px;
             padding: 12px 16px;
             background: #fff;
-            border-top: 1px solid #e9ecef;
+            border-top: 1px solid var(--msg-border, #dfe2e7);
         }
         .chatbot-input {
             flex: 1;
-            border: 1px solid #e9ecef;
-            background: #f8f9fa;
-            border-radius: 24px;
-            padding: 12px 18px;
+            border: none;
+            background: var(--msg-bg, #f0f2f5);
+            border-radius: 20px;
+            padding: 10px 16px;
             font-size: 14px;
+            color: var(--msg-text, #081c36);
             outline: none;
-            transition: all 0.2s;
+            font-family: inherit;
+            transition: background 0.2s;
         }
-        .chatbot-input:focus {
-            border-color: #667eea;
-            background: #fff;
-        }
+        .chatbot-input:focus { background: #e4e6eb; }
+        .chatbot-input::placeholder { color: var(--msg-text-secondary, #7589a3); }
         .chatbot-send-btn {
-            width: 44px;
-            height: 44px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--msg-blue, #0068FF);
             color: #fff;
             border: none;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: transform 0.2s;
+            transition: all 0.2s;
+            flex-shrink: 0;
         }
         .chatbot-send-btn:hover {
+            background: var(--msg-blue-hover, #0054cc);
             transform: scale(1.05);
         }
-        .chatbot-send-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
+        .chatbot-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .chatbot-send-btn .material-icons-round { font-size: 20px; }
+
+        /* Typing indicator — messenger style */
+        .cb-typing-row {
+            display: flex;
+            gap: 8px;
+            align-self: flex-start;
+            animation: cbFadeIn .25s ease;
         }
-        
         .chatbot-typing {
             display: flex;
             gap: 4px;
-            padding: 12px 16px;
-            background: #fff;
-            border-radius: 16px;
-            align-self: flex-start;
-            border: 1px solid #e9ecef;
+            padding: 10px 14px;
+            background: var(--msg-received-bg, #fff);
+            border-radius: 18px 18px 18px 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.06);
         }
         .chatbot-typing span {
-            width: 8px;
-            height: 8px;
+            width: 7px; height: 7px;
             border-radius: 50%;
-            background: #667eea;
+            background: #a0a8b4;
             animation: chatbotBounce 1.4s infinite ease-in-out;
         }
         .chatbot-typing span:nth-child(2) { animation-delay: 0.16s; }
@@ -1101,13 +1186,16 @@
         <!-- Main Chat Area -->
         <div class="chatbot-main">
             <div class="chatbot-header">
-                <span class="material-icons-round">smart_toy</span>
-                <div>
+                <div class="chatbot-header-avatar">
+                    <span class="material-icons-round">smart_toy</span>
+                    <span class="cb-online-dot"></span>
+                </div>
+                <div class="chatbot-header-info">
                     <div class="chatbot-header-title">Trợ lý AI GameTech</div>
-                    <div class="chatbot-header-subtitle">Sẵn sàng hỗ trợ bạn 24/7</div>
+                    <div class="chatbot-header-status">Đang hoạt động</div>
                 </div>
                 <button class="chatbot-header-close" onclick="toggleChatbot()" title="Đóng">
-                    <span class="material-icons-round" style="font-size:18px">close</span>
+                    <span class="material-icons-round" style="font-size:20px">close</span>
                 </button>
             </div>
             
@@ -1611,7 +1699,45 @@
         const cbBase = '{{ url("/") }}';
         const cbApi = cbBase + '/api/chatbot';
         let cbLastRecordId = null;
-        
+
+        function cbTimeNow() {
+            return new Date().toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
+        }
+        function cbFormatTime(dateStr) {
+            if (!dateStr) return '';
+            return new Date(dateStr).toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
+        }
+        function cbRenderUserMsg(text, time) {
+            return `<div class="cb-msg-row user">
+                <div class="cb-content">
+                    <div class="cb-bubble user">${escapeHtml(text)}</div>
+                    ${time ? `<div class="cb-time">${time}</div>` : ''}
+                </div>
+            </div>`;
+        }
+        function cbRenderBotMsg(html, recordId, time) {
+            let fb = '';
+            if (recordId) {
+                fb = `<div class="chatbot-feedback" data-record-id="${recordId}">
+                    <button class="chatbot-feedback-btn" onclick="submitFeedback(${recordId}, 'good', this)">👍 Hữu ích</button>
+                    <button class="chatbot-feedback-btn" onclick="submitFeedback(${recordId}, 'bad', this)">👎 Chưa tốt</button>
+                </div>`;
+            }
+            return `<div class="cb-msg-row bot">
+                <div class="cb-avatar"><span class="material-icons-round">smart_toy</span></div>
+                <div class="cb-content">
+                    <div class="cb-bubble bot">${html}${fb}</div>
+                    ${time ? `<div class="cb-time">${time}</div>` : ''}
+                </div>
+            </div>`;
+        }
+        function cbRenderTyping() {
+            return `<div class="cb-typing-row" id="chatbot-typing">
+                <div class="cb-avatar"><span class="material-icons-round">smart_toy</span></div>
+                <div class="chatbot-typing"><span></span><span></span><span></span></div>
+            </div>`;
+        }
+
         // Conversation ID management - persisted in localStorage
         // A conversation is like a chat with a friend - all messages belong to one conversation
         // until user explicitly creates a new one
@@ -1803,10 +1929,10 @@
                 const data = await res.json();
                 
                 if (data.success && data.data && data.data.length > 0) {
-                    messages.innerHTML = data.data.map(msg => `
-                        <div class="chatbot-msg user">${escapeHtml(msg.question)}</div>
-                        <div class="chatbot-msg bot">${formatMarkdown(msg.answer)}</div>
-                    `).join('');
+                    messages.innerHTML = data.data.map(msg => {
+                        const t = cbFormatTime(msg.created_at);
+                        return cbRenderUserMsg(msg.question, t) + cbRenderBotMsg(formatMarkdown(msg.answer), null, t);
+                    }).join('');
                     messages.scrollTop = messages.scrollHeight;
                 } else {
                     // Conversation is empty - show welcome but keep the same conversation
@@ -1867,21 +1993,20 @@
             }
             
             // Add welcome message
-            messages.innerHTML = `
-                <div class="chatbot-msg bot">
-                    <div style="font-size:20px;margin-bottom:8px">${greeting}</div>
-                    <div style="margin-bottom:12px">Tôi là trợ lý AI của <strong style="color:#667eea">GameTech</strong>.</div>
-                    <div style="margin-bottom:8px">🎮 Tôi có thể giúp bạn:</div>
-                    <div style="padding-left:8px;line-height:1.8">
-                        • Tìm game theo thể loại<br>
-                        • Tra cứu giá & thông tin game<br>
-                        • Kiểm tra đơn hàng<br>
-                        • Trả lời mọi câu hỏi
-                    </div>
-                    <div style="margin-top:12px;color:#6b7280;font-size:13px">💬 Hãy chọn câu hỏi bên dưới hoặc gõ tin nhắn!</div>
-                    ${saveNote}
+            const welcomeHtml = `
+                <div style="font-size:20px;margin-bottom:8px">${greeting}</div>
+                <div style="margin-bottom:12px">Tôi là trợ lý AI của <strong style="color:#667eea">GameTech</strong>.</div>
+                <div style="margin-bottom:8px">🎮 Tôi có thể giúp bạn:</div>
+                <div style="padding-left:8px;line-height:1.8">
+                    • Tìm game theo thể loại<br>
+                    • Tra cứu giá & thông tin game<br>
+                    • Kiểm tra đơn hàng<br>
+                    • Trả lời mọi câu hỏi
                 </div>
+                <div style="margin-top:12px;color:var(--msg-text-secondary,#7589a3);font-size:13px">💬 Hãy chọn câu hỏi bên dưới hoặc gõ tin nhắn!</div>
+                ${saveNote}
             `;
+            messages.innerHTML = cbRenderBotMsg(welcomeHtml, null, cbTimeNow());
             
             // Load suggestions
             try {
@@ -1936,10 +2061,10 @@
             if (suggestions) suggestions.remove();
             
             // Add user message
-            messages.innerHTML += `<div class="chatbot-msg user">${escapeHtml(message)}</div>`;
+            messages.innerHTML += cbRenderUserMsg(message, cbTimeNow());
             
             // Add typing indicator
-            messages.innerHTML += `<div class="chatbot-typing" id="chatbot-typing"><span></span><span></span><span></span></div>`;
+            messages.innerHTML += cbRenderTyping();
             messages.scrollTop = messages.scrollHeight;
             
             try {
@@ -1970,24 +2095,10 @@
                 
                 if (data.success) {
                     cbLastRecordId = data.data.record_id;
-                    
-                    // Format and add bot response
                     let responseHtml = formatMarkdown(data.data.answer);
-                    
-                    // Add feedback buttons (use record_id for feedback)
-                    let feedbackHtml = '';
-                    if (cbLastRecordId) {
-                        feedbackHtml = `
-                            <div class="chatbot-feedback" data-record-id="${cbLastRecordId}">
-                                <button class="chatbot-feedback-btn" onclick="submitFeedback(${cbLastRecordId}, 'good', this)">👍 Hữu ích</button>
-                                <button class="chatbot-feedback-btn" onclick="submitFeedback(${cbLastRecordId}, 'bad', this)">👎 Chưa tốt</button>
-                            </div>
-                        `;
-                    }
-                    
-                    messages.innerHTML += `<div class="chatbot-msg bot">${responseHtml}${feedbackHtml}</div>`;
+                    messages.innerHTML += cbRenderBotMsg(responseHtml, cbLastRecordId, cbTimeNow());
                 } else {
-                    messages.innerHTML += `<div class="chatbot-msg bot">Xin lỗi, có lỗi xảy ra. Vui lòng thử lại sau.</div>`;
+                    messages.innerHTML += cbRenderBotMsg('Xin lỗi, có lỗi xảy ra. Vui lòng thử lại sau.', null, cbTimeNow());
                 }
                 
             } catch(e) {
@@ -1995,7 +2106,7 @@
                 const typing = document.getElementById('chatbot-typing');
                 if (typing) typing.remove();
                 
-                messages.innerHTML += `<div class="chatbot-msg bot">Không thể kết nối. Vui lòng kiểm tra kết nối mạng và thử lại.</div>`;
+                messages.innerHTML += cbRenderBotMsg('Không thể kết nối. Vui lòng kiểm tra kết nối mạng và thử lại.', null, cbTimeNow());
                 console.error('Chatbot error:', e);
             }
             

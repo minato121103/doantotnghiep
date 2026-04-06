@@ -147,6 +147,7 @@
             'database.reviews': ['admin'],
             'database.transactions': ['admin'],
             'database.steam-accounts': ['admin'],
+            'database.steam-account-games': ['admin'],
             'database.recommendations': ['admin'],
             'database.table-structure': ['admin'],
             'database.support-tickets': ['admin'],

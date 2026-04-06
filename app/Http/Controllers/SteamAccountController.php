@@ -104,7 +104,7 @@ class SteamAccountController extends Controller
             'email' => 'nullable|email|max:255',
             'email_password' => 'nullable|string',
             'status' => 'nullable|in:available,sold,pending,suspended',
-            'games' => 'required|array|min:1',
+            'games' => 'nullable|array',
             'games.*' => 'required|exists:product_simple,id',
             'is_highlighted' => 'nullable|array',
             'is_highlighted.*' => 'boolean',
@@ -132,14 +132,16 @@ class SteamAccountController extends Controller
                 'status' => $request->status ?? 'available',
             ]);
 
-            // Attach games
-            $games = $request->games;
-            $isHighlighted = $request->is_highlighted ?? [];
-            
-            foreach ($games as $gameId) {
-                $account->games()->attach($gameId, [
-                    'is_highlighted' => isset($isHighlighted[$gameId]) && $isHighlighted[$gameId]
-                ]);
+            // Attach games if provided
+            if ($request->has('games') && is_array($request->games) && count($request->games) > 0) {
+                $games = $request->games;
+                $isHighlighted = $request->is_highlighted ?? [];
+                
+                foreach ($games as $gameId) {
+                    $account->games()->attach($gameId, [
+                        'is_highlighted' => isset($isHighlighted[$gameId]) && $isHighlighted[$gameId]
+                    ]);
+                }
             }
 
             DB::commit();

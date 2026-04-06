@@ -18,7 +18,8 @@ class ChatbotService
         'action' => ['hành động', 'action', 'bắn súng', 'shooter', 'fps'],
         'adventure' => ['phiêu lưu', 'adventure', 'khám phá'],
         'rpg' => ['rpg', 'nhập vai', 'role playing', 'role-playing'],
-        'sports' => ['thể thao', 'sports', 'bóng đá', 'football', 'fifa', 'pes', 'đua xe', 'racing'],
+        'sports' => ['thể thao', 'sports', 'bóng đá', 'football', 'fifa', 'pes'],
+        'racing' => ['đua xe', 'racing', 'race', 'drift', 'tốc độ', 'đường đua', 'xe đua'],
         'strategy' => ['chiến thuật', 'strategy', 'rts'],
         'simulation' => ['mô phỏng', 'simulation', 'sim'],
         'puzzle' => ['giải đố', 'puzzle', 'logic'],
@@ -27,10 +28,15 @@ class ChatbotService
         'mmo' => ['mmo', 'online', 'multiplayer', 'nhiều người'],
     ];
 
-    /**
-     * Chỉ giữ rule giới thiệu về chatbot - mọi câu khác để Gemini xử lý tự nhiên (như ChatGPT/Gemini).
-     * Không phản hồi theo từ khóa để thu thập dữ liệu và train tốt hơn.
-     */
+    protected array $racingKeywords = [
+        'đua xe', 'racing', 'race', 'drift', 'tốc độ', 'speed',
+        'đường đua', 'xe đua', 'formula', 'nascar', 'rally',
+        'need for speed', 'nfs', 'forza', 'gran turismo',
+        'asphalt', 'f1', 'dirt', 'wrc', 'dua xe',
+        'đua ô tô', 'đua mô tô', 'tay đua', 'siêu xe',
+        'mario kart', 'burnout', 'crew', 'hot wheels',
+    ];
+
     protected array $fixedRules = [
         [
             'patterns' => ['bạn là ai', 'giới thiệu bản thân', 'who are you', 'tên bạn là gì', 'bạn tên gì', 'you are', 'introduce yourself'],
@@ -58,6 +64,12 @@ class ChatbotService
         $learnedResponse = $this->checkLearnedRules($lowerMessage, $userId);
         if ($learnedResponse) {
             return $this->saveAndReturn($message, $learnedResponse['response'], 'learned', $userId, $sessionId, $conversationId, $startTime, $learnedResponse['rule_id']);
+        }
+        
+        // 2.5. Racing game fallback — chuyên gia game đua xe, gọi Gemini với context chuyên sâu
+        $racingResponse = $this->handleRacingGameFallback($message, $lowerMessage, $userId, $conversationId);
+        if ($racingResponse) {
+            return $this->saveAndReturn($message, $racingResponse['response'], 'gemini', $userId, $sessionId, $conversationId, $startTime, null, $racingResponse['products'] ?? []);
         }
         
         // 3. Check Product/Category queries — dữ liệu game chỉ là nguồn, Gemini trả lời tự nhiên
@@ -583,6 +595,151 @@ class ChatbotService
     }
 
     /**
+     * Fallback chuyên biệt cho các câu hỏi về game đua xe.
+     * Phát hiện nhiều dạng câu hỏi: tâm trạng, gợi ý, thông tin, so sánh, tương tự.
+     * Gọi Gemini với context chuyên sâu về racing games.
+     */
+    protected function handleRacingGameFallback(string $message, string $lowerMessage, ?int $userId, ?string $conversationId): ?array
+    {
+        $isRacingQuery = false;
+        foreach ($this->racingKeywords as $keyword) {
+            if (str_contains($lowerMessage, $keyword)) {
+                $isRacingQuery = true;
+                break;
+            }
+        }
+
+        if (!$isRacingQuery) {
+            return null;
+        }
+
+        $racingGames = ProductSimple::where(function ($q) {
+            $q->where('category', 'LIKE', '%racing%')
+              ->orWhere('category', 'LIKE', '%đua xe%')
+              ->orWhere('category', 'LIKE', '%race%')
+              ->orWhere('type', 'LIKE', '%racing%')
+              ->orWhere('type', 'LIKE', '%race%')
+              ->orWhere('title', 'LIKE', '%racing%')
+              ->orWhere('title', 'LIKE', '%speed%')
+              ->orWhere('title', 'LIKE', '%forza%')
+              ->orWhere('title', 'LIKE', '%drift%')
+              ->orWhere('title', 'LIKE', '%rally%')
+              ->orWhere('title', 'LIKE', '%race%')
+              ->orWhere('title', 'LIKE', '%gran turismo%')
+              ->orWhere('title', 'LIKE', '%f1 %')
+              ->orWhere('title', 'LIKE', '%need for speed%')
+              ->orWhere('title', 'LIKE', '%nfs%')
+              ->orWhere('title', 'LIKE', '%burnout%')
+              ->orWhere('title', 'LIKE', '%asphalt%')
+              ->orWhere('title', 'LIKE', '%mario kart%')
+              ->orWhere('title', 'LIKE', '%hot wheels%')
+              ->orWhere('title', 'LIKE', '%crew%')
+              ->orWhere('short_description', 'LIKE', '%đua xe%')
+              ->orWhere('short_description', 'LIKE', '%racing%')
+              ->orWhere('short_description', 'LIKE', '%race%');
+        })->orderByDesc('view_count')->limit(10)->get();
+
+        $questionType = $this->detectRacingQuestionType($lowerMessage);
+        $racingContext = $this->buildRacingGameContext($racingGames, $questionType);
+        $conversationHistory = $this->getConversationHistory($conversationId);
+
+        $geminiResponse = $this->callGeminiAI($message, $userId, $conversationHistory, $racingContext);
+        $geminiResponse = $this->addLinksToResponse($geminiResponse);
+
+        $productIds = $racingGames->pluck('id')->toArray();
+
+        if ($userId && !empty($productIds)) {
+            $this->logProductInterest($userId, array_slice($productIds, 0, 5), 1.5);
+        }
+
+        return [
+            'response' => $geminiResponse,
+            'products' => $productIds,
+        ];
+    }
+
+    /**
+     * Phát hiện loại câu hỏi về game đua xe để cung cấp context phù hợp cho Gemini.
+     */
+    protected function detectRacingQuestionType(string $lowerMessage): string
+    {
+        if (preg_match('/(?:hôm nay|tâm trạng|cảm thấy|đang|tôi)\s*(?:buồn|vui|chán|stress|mệt|hào hứng|phấn khích|thư giãn|giải trí|lo lắng|cô đơn|bực|tức|sợ|nhớ)/iu', $lowerMessage)) {
+            return 'mood';
+        }
+
+        if (preg_match('/so\s*sánh|khác\s*nhau|giống\s*nhau|vs\s+|versus|đối\s*đầu|hay\s*hơn/iu', $lowerMessage)) {
+            return 'comparison';
+        }
+
+        if (preg_match('/giống|tương\s*tự|similar|na\s*ná|gần\s*giống|kiểu\s*như|giống\s*game/iu', $lowerMessage)) {
+            return 'similar';
+        }
+
+        if (preg_match('/(?:như\s*nào|thế\s*nào|ra\s*sao|thông\s*tin|tìm\s*hiểu|chi\s*tiết|review|đánh\s*giá|gameplay|cấu\s*hình|có\s*gì\s*hay|hay\s*ở\s*chỗ)/iu', $lowerMessage)) {
+            return 'info';
+        }
+
+        return 'suggestion';
+    }
+
+    /**
+     * Xây dựng context chuyên sâu về game đua xe gửi cho Gemini.
+     * Bao gồm: kiến thức thể loại, game trong DB, hướng dẫn theo loại câu hỏi.
+     */
+    protected function buildRacingGameContext($racingGames, string $questionType = 'suggestion'): string
+    {
+        $baseUrl = config('app.url', 'http://127.0.0.1:8000');
+
+        $context = "[CHUYÊN GIA GAME ĐUA XE - Trả lời chuyên sâu, tự nhiên về game đua xe]\n\n";
+
+        $context .= match ($questionType) {
+            'mood' => "USER ĐANG CHIA SẺ TÂM TRẠNG và muốn game đua xe. Hãy:\n1. Đồng cảm với cảm xúc của họ trước\n2. Gợi ý 2-3 game đua xe PHÙ HỢP tâm trạng (buồn/stress → game arcade nhẹ nhàng thư giãn; vui/hào hứng → game tốc độ kịch tính; chán → game đua xe thế giới mở khám phá)\n3. Giải thích ngắn tại sao game đó hợp tâm trạng\n\n",
+            'comparison' => "USER MUỐN SO SÁNH game đua xe. Hãy so sánh chi tiết:\n- Gameplay & độ khó\n- Đồ họa & hiệu ứng\n- Chế độ chơi (online/offline/co-op)\n- Điểm mạnh / điểm yếu từng game\n- Phù hợp với ai\n- Giá cả nếu có trong cửa hàng\nDùng bullet points để dễ đọc.\n\n",
+            'similar' => "USER MUỐN TÌM GAME TƯƠNG TỰ. Hãy:\n1. Phân tích đặc điểm game được nhắc (gameplay, phong cách, thể loại con)\n2. Gợi ý 3-5 game đua xe có đặc điểm tương tự\n3. Giải thích ngắn điểm giống nhau\n\n",
+            'info' => "USER MUỐN TÌM HIỂU CHI TIẾT game đua xe. Hãy cung cấp:\n- Giới thiệu tổng quan\n- Gameplay & cơ chế chơi\n- Đồ họa & âm thanh\n- Chế độ chơi\n- Ưu điểm & nhược điểm\n- Đánh giá tổng thể\n- Phù hợp với ai\n\n",
+            default => "USER MUỐN GỢI Ý GAME ĐUA XE. Hãy gợi ý 3-5 game phù hợp, mỗi game kèm mô tả ngắn 1-2 dòng về điểm nổi bật.\n\n",
+        };
+
+        $context .= "KIẾN THỨC GAME ĐUA XE (dùng để trả lời chuyên sâu):\n";
+        $context .= "• Arcade Racing: Dễ chơi, vui nhộn, power-ups (Need for Speed, Burnout, Mario Kart, Asphalt)\n";
+        $context .= "• Simulation Racing: Vật lý chân thực, đòi hỏi kỹ năng (Gran Turismo, Forza Motorsport, Assetto Corsa, iRacing)\n";
+        $context .= "• Open World Racing: Thế giới mở tự do khám phá (Forza Horizon, The Crew, Need for Speed Heat/Unbound)\n";
+        $context .= "• Kart Racing: Hoạt hình, dễ thương, party game (Mario Kart, Crash Team Racing, Hot Wheels Unleashed)\n";
+        $context .= "• Rally/Off-road: Đường đất, địa hình khó (Dirt Rally, WRC, MudRunner)\n";
+        $context .= "• Street Racing: Đường phố, drift, tuning xe (Need for Speed Underground/Most Wanted, Initial D)\n";
+        $context .= "• F1/Motorsport: Giải đua chuyên nghiệp (F1 series, MotoGP, NASCAR Heat)\n\n";
+
+        if ($racingGames->isNotEmpty()) {
+            $context .= "GAME ĐUA XE CÓ SẴN TẠI CỬA HÀNG (ƯU TIÊN gợi ý những game này kèm link):\n";
+            foreach ($racingGames as $game) {
+                $price = $this->formatPrice($game->price ?? 0);
+                $link = "{$baseUrl}/game/{$game->id}";
+                $desc = $game->short_description ?? '';
+                $context .= "- [{$game->title}]({$link}) | Giá: {$price}";
+                if ($game->category) {
+                    $context .= " | Thể loại: {$game->category}";
+                }
+                if ($desc) {
+                    $context .= " | Mô tả: {$desc}";
+                }
+                $context .= "\n";
+            }
+            $context .= "\n";
+        } else {
+            $context .= "HIỆN TẠI CỬA HÀNG CHƯA CÓ GAME ĐUA XE. Hãy gợi ý game đua xe nổi tiếng dựa trên kiến thức chung và mời user ghé [**Cửa hàng**]({$baseUrl}/store) để xem game mới nhất.\n\n";
+        }
+
+        $context .= "QUY TẮC:\n";
+        $context .= "- Trả lời tiếng Việt, thân thiện, có emoji phù hợp\n";
+        $context .= "- Ưu tiên game có trong cửa hàng, kèm link markdown [**Tên game**](link)\n";
+        $context .= "- Nếu game không có trong cửa hàng, vẫn gợi ý nhưng ghi chú rõ\n";
+        $context .= "- Trả lời tự nhiên như chuyên gia game, không liệt kê cứng nhắc\n";
+        $context .= "- Link cửa hàng: [**Cửa hàng**]({$baseUrl}/store)\n";
+
+        return $context;
+    }
+
+    /**
      * Dữ liệu game dạng text để Gemini dùng làm nguồn tham khảo (không copy nguyên template).
      */
     protected function buildProductContextText($products): string
@@ -907,6 +1064,7 @@ VÍ DỤ TRẢ LỜI CÓ LINK:
             'adventure' => 'Phiêu lưu',
             'rpg' => 'Nhập vai (RPG)',
             'sports' => 'Thể thao',
+            'racing' => 'Đua xe',
             'strategy' => 'Chiến thuật',
             'simulation' => 'Mô phỏng',
             'puzzle' => 'Giải đố',

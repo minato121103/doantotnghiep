@@ -90,6 +90,15 @@
                 <div class="text-sm font-medium opacity-90">Steam Accounts</div>
             </a>
             
+            <!-- Steam Account Games (Admin only) -->
+            <a href="{{ route('database.steam-account-games') }}" data-role="admin" class="role-restricted bg-gradient-to-br from-indigo-500 to-violet-600 text-white p-4 rounded-xl hover:shadow-lg transition-all duration-200 group hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-2xl">🎲</span>
+                    <span class="text-2xl sm:text-3xl font-bold">{{ $stats['steam_account_games_count'] ?? 0 }}</span>
+                </div>
+                <div class="text-sm font-medium opacity-90">Account Games</div>
+            </a>
+            
             <!-- Discussions (Admin + Editor) -->
             <a href="{{ route('database.discussions') }}" data-role="admin,editor" class="role-restricted bg-gradient-to-br from-pink-500 to-pink-600 text-white p-4 rounded-xl hover:shadow-lg transition-all duration-200 group hidden">
                 <div class="flex items-center justify-between mb-2">
@@ -357,6 +366,10 @@
                                     </a>
                                 @elseif($table === 'steam_accounts')
                                     <a href="{{ route('database.steam-accounts') }}" class="inline-flex items-center px-2.5 py-1 text-xs font-medium text-slate-700 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
+                                        Manage
+                                    </a>
+                                @elseif($table === 'steam_account_games')
+                                    <a href="{{ route('database.steam-account-games') }}" class="inline-flex items-center px-2.5 py-1 text-xs font-medium text-indigo-700 bg-indigo-100 rounded-full hover:bg-indigo-200 transition-colors">
                                         Manage
                                     </a>
                                 @elseif($table === 'product_discussions')

@@ -15,6 +15,7 @@ use App\Models\SupportTicket;
 use App\Models\CommunityPost;
 use App\Models\Promotion;
 use App\Models\Coupon;
+use App\Models\SteamAccountGame;
 use Illuminate\Support\Facades\DB;
 
 class DatabaseController extends Controller
@@ -36,6 +37,7 @@ class DatabaseController extends Controller
             'community_posts_count' => CommunityPost::count(),
             'promotions_count' => Promotion::count(),
             'coupons_count' => Coupon::count(),
+            'steam_account_games_count' => SteamAccountGame::count(),
             'tables' => $this->getTablesList()
         ];
         
@@ -115,6 +117,12 @@ class DatabaseController extends Controller
     public function discussions()
     {
         return view('database.discussion.discussions');
+    }
+
+    // Steam Account Games Management
+    public function steamAccountGames()
+    {
+        return view('database.steam.steam-account-games');
     }
 
     #chỉnh sửa danh sách quản lý bảng
